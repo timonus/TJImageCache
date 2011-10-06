@@ -2,6 +2,7 @@
 // By Tim Johnsen
 
 #import "TJImageCache.h"
+#import <CommonCrypto/CommonDigest.h>
 
 @interface TJImageCache ()
 
@@ -60,11 +61,11 @@
 }
 
 - (void)dumpDiskCache {
-	
+	[[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:nil] error:nil];
 }
 
 - (void)dumpMemoryCache {
-	
+	[[TJImageCache _cache] removeAllObjects];
 }
 
 #pragma mark -
@@ -74,11 +75,28 @@
 #pragma mark Private
 
 + (NSString *)_pathForURL:(NSString *)url {
-	return [NSHomeDirectory() stringByAppendingFormat:@"/Library/Caches/%@", [TJImageCache _hash:url]];
+	static NSString *path = nil;
+	static dispatch_once_t token;
+	dispatch_once(&token, ^{
+		path = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"];
+	});
+	
+	if (url) {
+		return [path stringByAppendingPathComponent:[TJImageCache _hash:url]];
+	}
+	return path;
 }
 
 + (NSString *)_hash:(NSString *)string {
-	return string;
+	const char* str = [string UTF8String];
+    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    CC_MD5(str, strlen(str), result);
+	
+    NSMutableString *ret = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH*2];
+    for(int i = 0; i<CC_MD5_DIGEST_LENGTH; i++) {
+        [ret appendFormat:@"%02x",result[i]];
+    }
+    return ret;
 }
 
 + (NSMutableDictionary *)_requests {
