@@ -7,10 +7,10 @@ typedef enum {
 	TJImageCacheDepthFull
 } TJImageCacheDepth;
 
-@protocol TJImageCacheDelegate
+@protocol TJImageCacheDelegate <NSObject>
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url;
-- (void)didFailToGetImage:(UIImage *)image atURL:(NSString *)url;
+- (void)didFailToGetImageAtURL:(NSString *)url;
 
 @end
 

@@ -32,7 +32,46 @@
 }
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
-	return nil;
+	
+	// Load from memory
+	
+	__block UIImage *image = [[TJImageCache _cache] objectForKey:[TJImageCache _hash:url]];
+	
+	// Load from disk...
+	
+	if (!image && depth != TJImageCacheDepthMemory) {
+		
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+			image = [UIImage imageWithContentsOfFile:[TJImageCache _pathForURL:url]];
+			
+			if (image) {
+				// tell delegate about success
+				[[TJImageCache _cache] setObject:image forKey:[TJImageCache _hash:url]];
+				
+				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+					[delegate didGetImage:image atURL:url];
+				}
+			} else {
+				if (depth == TJImageCacheDepthFull) {
+					
+					// setup or add to delegate ball wrapped in locks...
+					
+					dispatch_async(dispatch_get_main_queue(), ^{
+						
+						// Load from the interwebs using NSURLConnection delegate
+						
+					});
+				} else {
+					// tell delegate about failure
+					if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+						[delegate didFailToGetImageAtURL:url];
+					}
+				}
+			}
+		});
+	}
+	
+	return image;
 }
 
 #pragma mark -
