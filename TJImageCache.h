@@ -9,6 +9,8 @@ typedef enum {
 
 @protocol TJImageCacheDelegate <NSObject>
 
+@optional
+
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url;
 - (void)didFailToGetImageAtURL:(NSString *)url;
 
