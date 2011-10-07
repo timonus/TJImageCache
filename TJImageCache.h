@@ -1,10 +1,11 @@
 // TJImageCache
+// TJImageCache
 // By Tim Johnsen
 
 typedef enum {
 	TJImageCacheDepthMemory,
 	TJImageCacheDepthDisk,
-	TJImageCacheDepthFull
+	TJImageCacheDepthInternet
 } TJImageCacheDepth;
 
 @protocol TJImageCacheDelegate <NSObject>
@@ -16,7 +17,7 @@ typedef enum {
 
 @end
 
-@interface TJImageCache : NSObject
+@interface TJImageCache : NSObject <TJImageCacheDelegate>
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
 

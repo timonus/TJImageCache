@@ -1,26 +1,18 @@
 // TJImageCache
+// TJImageCache
 // By Tim Johnsen
 
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
 #pragma mark -
-#pragma mark TJURLConnection
+#pragma mark TJImageCacheConnection
 
 @interface TJImageCacheConnection : NSURLConnection
 
 @property (nonatomic, retain) NSMutableData *data;
-@property (retain) NSMutableArray *delegates;
+@property (retain) NSMutableSet *delegates;
 @property (nonatomic, retain) NSString *url;
-
-+ (TJImageCacheConnection *)connectionWithURL:(NSString *)url delegate:(id)delegate;
-
-@end
-
-@protocol TJURLConnectionDelegate <NSObject>
-
-- (void)connectionDidFinishLoading:(TJImageCacheConnection *)connection;
-- (void)connectionDidFail:(TJImageCacheConnection *)connection;
 
 @end
 
@@ -38,31 +30,6 @@
 	[super dealloc];
 }
 
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)theData {
-	[self.data appendData:theData];
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-	self.data = [NSMutableData data];
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-	[TJImageCache connectionDidFinishLoading:self];
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-	[TJImageCache connection:self didFailWithError:error];
-}
-
-+ (TJImageCacheConnection *)connectionWithURL:(NSString *)url delegate:(id)delegate {
-	TJImageCacheConnection *connection = [[TJImageCacheConnection alloc] initWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] delegate:connection];
-	
-	connection.delegates = [[NSMutableArray alloc] initWithObjects:delegate, nil];
-	connection.url = [[url copy] autorelease];
-	
-	return [connection autorelease];
-}
-
 @end
 
 #pragma mark -
@@ -74,6 +41,7 @@
 + (NSString *)_hash:(NSString *)string;
 
 + (NSMutableDictionary *)_requests;
++ (NSRecursiveLock *)_requestLock;
 + (NSCache *)_cache;
 
 @end
@@ -84,7 +52,7 @@
 #pragma mark Image Fetching
 
 + (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate {
-	return [self imageAtURL:url depth:TJImageCacheDepthFull delegate:delegate];
+	return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
 }
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth {
@@ -92,7 +60,7 @@
 }
 
 + (UIImage *)imageAtURL:(NSString *)url {
-	return [self imageAtURL:url depth:TJImageCacheDepthFull delegate:nil];
+	return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:nil];
 }
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
@@ -117,7 +85,7 @@
 					[delegate didGetImage:image atURL:url];
 				}
 			} else {
-				if (depth == TJImageCacheDepthFull) {
+				if (depth == TJImageCacheDepthInternet) {
 					
 					// setup or add to delegate ball wrapped in locks...
 					
@@ -125,18 +93,23 @@
 						
 						// Load from the interwebs using NSURLConnection delegate
 						
-						// LOCK
+						[[TJImageCache _requestLock] lock];
 						
 						if ([[TJImageCache _requests] objectForKey:hash]) {
 							if (delegate) {
-								[[[[TJImageCache _requests] objectForKey:hash] objectForKey:@"delegates"] addObject:delegate];
+								TJImageCacheConnection *connection = [[TJImageCache _requests] objectForKey:hash];
+								[connection.delegates addObject:delegate];
 							}
 						} else {
-							[[TJImageCache _requests] setObject:[TJImageCacheConnection connectionWithURL:url delegate:delegate] forKey:hash];
+							TJImageCacheConnection *connection = [[TJImageCacheConnection alloc] initWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] delegate:[TJImageCache class]];
+							connection.url = [[url copy] autorelease];
+							connection.delegates = [NSMutableSet setWithObject:delegate];
+							
+							[[TJImageCache _requests] setObject:connection forKey:hash];
+							[connection release];
 						}
 						
-						// UNLOCK
-						
+						[[TJImageCache _requestLock] lock];
 					});
 				} else {
 					// tell delegate about failure
@@ -164,7 +137,7 @@
 		return TJImageCacheDepthDisk;
 	}
 	
-	return TJImageCacheDepthFull;
+	return TJImageCacheDepthInternet;
 }
 
 #pragma mark -
@@ -187,16 +160,61 @@
 #pragma mark -
 #pragma mark NSURLConnectionDelegate
 
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-	// LOCK
++ (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
+	[(TJImageCacheConnection *)connection setData:[NSMutableData data]];
+}
+
++ (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)theData {
+	[[(TJImageCacheConnection *)connection data] appendData:theData];
+}
+
++ (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+	[[TJImageCache _requestLock] lock];
 	
-	// UNLOCK
+	// process image
+	UIImage *image = [UIImage imageWithData:[(TJImageCacheConnection *)connection data]];
+	
+	if (image) {
+		
+		NSString *url = [(TJImageCacheConnection *)connection url];
+	
+		// Cache in Memory
+		[[TJImageCache _cache] setObject:image forKey:[TJImageCache _hash:url]];
+		
+		// Cache to Disk
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+			[UIImagePNGRepresentation(image) writeToFile:[TJImageCache _pathForURL:url] atomically:YES];
+		});
+		
+		// Inform Delegates
+		for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
+			[delegate didGetImage:image atURL:url];
+		}
+		
+		// Remove the connection
+		[[TJImageCache _requests] removeObjectForKey:[TJImageCache _hash:url]];
+		
+	} else {
+		[TJImageCache performSelector:@selector(connection:didFailWithError:) withObject:connection withObject:nil];
+	}
+	
+	[[TJImageCache _requestLock] unlock];
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-	// LOCK
+	[[TJImageCache _requestLock] lock];
 	
-	// UNLOCK	
+	NSString *url = [(TJImageCacheConnection *)connection url];
+	
+	// Inform Delegates
+	for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
+		[delegate didFailToGetImageAtURL:url];
+	}
+	
+	// Remove the connection
+	[[TJImageCache _requests] removeObjectForKey:[TJImageCache _hash:url]];
+	
+	[[TJImageCache _requestLock] unlock];
 }
 
 #pragma mark -
@@ -236,6 +254,16 @@
 	});
 	
 	return requests;
+}
+
++ (NSRecursiveLock *)_requestLock {
+	static NSRecursiveLock *lock = nil;
+	static dispatch_once_t token;
+	dispatch_once(&token, ^{
+		lock = [[NSRecursiveLock alloc] init];
+	});
+	
+	return lock;
 }
 
 + (NSCache *)_cache {
