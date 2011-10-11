@@ -18,7 +18,7 @@ In the event that the image is already in memory, each of these methods returns 
 
 This `depth` parameter is in several of the aforementioned methods, it's an enum used to tell TJImageCache how far into the cache it should go before giving up.
 
-- `TJImageCacheDepthMemory` should be used if you *only* want the cache to check memory for the specified image, when I used is scrolling through a grid of images at a million miles an hour for example.
+- `TJImageCacheDepthMemory` should be used if you *only* want the cache to check memory for the specified image, when a user is scrolling through a grid of images at a million miles an hour for example.
 
 - `TJImageCacheDepthDisk` should be used if you want TJImageCache to check memory, then the disk subsequently on a cache miss.
 
