@@ -27,4 +27,9 @@ typedef enum {
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *)url;
 
++ (void)removeImageAtURL:(NSString *)url;
++ (void)dumpDiskCache;
++ (void)dumpMemoryCache;
+
+
 @end
