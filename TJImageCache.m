@@ -65,6 +65,14 @@
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
 	
+	static dispatch_once_t token;
+	dispatch_once(&token, ^{
+		BOOL isDir = NO;
+		if (!([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForURL:nil] isDirectory:&isDir] && isDir)) {
+			[[NSFileManager defaultManager] createDirectoryAtPath:[TJImageCache _pathForURL:nil] withIntermediateDirectories:YES attributes:nil error:nil];
+		}
+	});
+	
 	// Load from memory
 	
 	NSString *hash = [TJImageCache _hash:url];
@@ -224,7 +232,7 @@
 	static NSString *path = nil;
 	static dispatch_once_t token;
 	dispatch_once(&token, ^{
-		path = [[[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"] retain];
+		path = [[[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"Caches/TJImageCache"] retain];
 	});
 	
 	if (url) {
