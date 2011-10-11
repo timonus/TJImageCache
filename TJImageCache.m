@@ -224,7 +224,7 @@
 	static NSString *path = nil;
 	static dispatch_once_t token;
 	dispatch_once(&token, ^{
-		path = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"];
+		path = [[[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"] retain];
 	});
 	
 	if (url) {
