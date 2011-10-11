@@ -93,7 +93,9 @@
 				[[TJImageCache _cache] setObject:image forKey:hash];
 				
 				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-					[delegate didGetImage:image atURL:url];
+					dispatch_async(dispatch_get_main_queue(), ^{
+						[delegate didGetImage:image atURL:url];
+					});
 				}
 			} else {
 				if (depth == TJImageCacheDepthInternet) {
@@ -129,7 +131,9 @@
 				} else {
 					// tell delegate about failure
 					if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-						[delegate didFailToGetImageAtURL:url];
+						dispatch_async(dispatch_get_main_queue(), ^{
+							[delegate didFailToGetImageAtURL:url];
+						});
 					}
 				}
 			}
@@ -204,7 +208,9 @@
 		
 		// Inform Delegates
 		for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
-			[delegate didGetImage:image atURL:url];
+			if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+				[delegate didGetImage:image atURL:url];
+			}
 		}
 		
 		// Remove the connection
@@ -224,7 +230,9 @@
 	
 	// Inform Delegates
 	for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
-		[delegate didFailToGetImageAtURL:url];
+		if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+			[delegate didFailToGetImageAtURL:url];
+		}
 	}
 	
 	// Remove the connection
