@@ -296,6 +296,7 @@
 	
 	dispatch_once(&token, ^{
 		cache = [[NSCache alloc] init];
+		[cache setCountLimit:100];
 	});
 	
 	return cache;
