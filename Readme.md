@@ -14,7 +14,7 @@ To fetch an image, use one of the following methods.
 
 In the event that the image is already in memory, each of these methods returns a `UIImage *`. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
 
-## About `depth`
+## About TJImageCacheDepth
 
 This `depth` parameter is in several of the aforementioned methods, it's an enum used to tell TJImageCache how far into the cache it should go before giving up.
 
