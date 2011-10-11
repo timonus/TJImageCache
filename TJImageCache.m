@@ -44,6 +44,9 @@
 + (NSRecursiveLock *)_requestLock;
 + (NSCache *)_cache;
 
++ (NSOperationQueue *)_readQueue;
++ (NSOperationQueue *)_writeQueue;
+
 @end
 
 @implementation TJImageCache
@@ -82,7 +85,7 @@
 	
 	if (!image && depth != TJImageCacheDepthMemory) {
 		
-		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+		[[TJImageCache _readQueue] addOperationWithBlock:^{
 			image = [UIImage imageWithContentsOfFile:[TJImageCache _pathForURL:url]];
 			
 			if (image) {
@@ -126,7 +129,7 @@
 					}
 				}
 			}
-		});
+		}];
 	}
 	
 	return image;
@@ -159,6 +162,7 @@
 
 + (void)dumpDiskCache {
 	[[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:nil] error:nil];
+	[[NSFileManager defaultManager] createDirectoryAtPath:[TJImageCache _pathForURL:nil] withIntermediateDirectories:YES attributes:nil error:nil];
 }
 
 + (void)dumpMemoryCache {
@@ -190,9 +194,9 @@
 		[[TJImageCache _cache] setObject:image forKey:[TJImageCache _hash:url]];
 		
 		// Cache to Disk
-		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+		[[TJImageCache _writeQueue] addOperationWithBlock:^{
 			[UIImagePNGRepresentation(image) writeToFile:[TJImageCache _pathForURL:url] atomically:YES];
-		});
+		}];
 		
 		// Inform Delegates
 		for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
@@ -283,6 +287,30 @@
 	});
 	
 	return cache;
+}
+
++ (NSOperationQueue *)_readQueue {
+	static NSOperationQueue *queue = nil;
+	static dispatch_once_t token;
+	
+	dispatch_once(&token, ^{
+		queue = [[NSOperationQueue alloc] init];
+		[queue setMaxConcurrentOperationCount:4];
+	});
+	
+	return queue;
+}
+
++ (NSOperationQueue *)_writeQueue {
+	static NSOperationQueue *queue = nil;
+	static dispatch_once_t token;
+	
+	dispatch_once(&token, ^{
+		queue = [[NSOperationQueue alloc] init];
+		[queue setMaxConcurrentOperationCount:4];
+	});
+	
+	return queue;
 }
 
 @end
