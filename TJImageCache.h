@@ -25,4 +25,6 @@ typedef enum {
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth;
 + (UIImage *)imageAtURL:(NSString *)url;
 
++ (TJImageCacheDepth)depthForImageAtURL:(NSString *)url;
+
 @end

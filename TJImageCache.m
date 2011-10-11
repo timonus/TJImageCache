@@ -138,7 +138,7 @@
 #pragma mark -
 #pragma mark Cache Checking
 
-- (TJImageCacheDepth)depthForImageAtURL:(NSString *)url {
++ (TJImageCacheDepth)depthForImageAtURL:(NSString *)url {
 	
 	if ([[TJImageCache _cache] objectForKey:[TJImageCache _hash:url]]) {
 		return TJImageCacheDepthMemory;
