@@ -219,7 +219,7 @@
 	[[TJImageCache _requestLock] unlock];
 }
 
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
++ (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
 	[[TJImageCache _requestLock] lock];
 	
 	NSString *url = [(TJImageCacheConnection *)connection url];
