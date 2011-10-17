@@ -7,10 +7,10 @@ This is a re-imagined version of TJImageDatabase, the image caching system I sta
 
 To fetch an image, use one of the following methods.
 
-1. `- (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate`
-2. `- (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate`
-3. `- (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth`
-4. `- (UIImage *)imageAtURL:(NSString *)url`
+1. `+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate`
+2. `+ (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate`
+3. `+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth`
+4. `+ (UIImage *)imageAtURL:(NSString *)url`
 
 In the event that the image is already in memory, each of these methods returns a `UIImage *`. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
 
