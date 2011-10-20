@@ -5,6 +5,7 @@
 typedef enum {
 	TJImageCacheDepthMemory,
 	TJImageCacheDepthDisk,
+	TJImageCacheDepthDiskSynchronous,
 	TJImageCacheDepthInternet
 } TJImageCacheDepth;
 

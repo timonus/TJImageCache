@@ -85,7 +85,7 @@
 	
 	if (!image && depth != TJImageCacheDepthMemory) {
 		
-		[[TJImageCache _readQueue] addOperationWithBlock:^{
+		void (^fetchBlock)(void) = ^{
 			image = [UIImage imageWithContentsOfFile:[TJImageCache _pathForURL:url]];
 			
 			if (image) {
@@ -133,7 +133,13 @@
 					}
 				}
 			}
-		}];
+		};
+		
+		if (depth == TJImageCacheDepthDisk) {
+			[[TJImageCache _readQueue] addOperation:fetchBlock];
+		} else {
+			dispatch_sync(dispatch_get_main_queue(), fetchBlock);
+		}
 	}
 	
 	return image;
