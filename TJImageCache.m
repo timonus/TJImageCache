@@ -93,8 +93,10 @@
 				[[TJImageCache _cache] setObject:image forKey:hash];
 				
 				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+					[image retain];
 					dispatch_async(dispatch_get_main_queue(), ^{
 						[delegate didGetImage:image atURL:url];
+						[image release];
 					});
 				}
 			} else {
