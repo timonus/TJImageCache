@@ -68,6 +68,10 @@
 
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
 	
+	if (!url) {
+		return nil;
+	}
+	
 	static dispatch_once_t token;
 	dispatch_once(&token, ^{
 		BOOL isDir = NO;
