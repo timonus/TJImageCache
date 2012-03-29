@@ -1,7 +1,7 @@
 # TJImageCache
 *Yet another Objective-C image cache.*
 
-This is a re-imagined version of TJImageDatabase, the image caching system I started with NGadget and have used in numerous other Apps including [Wootie](http://j.mp/wootie) and [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8). It's designed for ease-of-use for the developer and to not bog down the system.
+This is a reimagined version of TJImageDatabase, the image caching system I started with NGadget and have used in numerous other Apps including [Wootie](http://j.mp/wootie) and [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8). It's designed for ease-of-use for the developer and to not bog down the system.
 
 ## Fetching an Image
 
