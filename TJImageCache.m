@@ -210,6 +210,40 @@
 }
 
 #pragma mark -
+#pragma mark Cache Auditing
+
++ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block {
+	dispatch_sync(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+		NSString *basePath = [TJImageCache _pathForURL:nil];
+		NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:basePath error:nil];
+
+		for (NSString *file in files) {
+			@autoreleasepool {
+				NSString *path = [basePath stringByAppendingPathComponent:file];
+				NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+				NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
+				NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
+				if (!block(file, lastAccess, createdDate)) {
+					[[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+				}
+			}
+		}
+	});
+}
+
++ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date {
+	[TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate){
+		return ([createdDate compare:date] != NSOrderedAscending);
+	}];
+}
+
++ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *)date {
+	[TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate){
+		return ([lastAccess compare:date] != NSOrderedAscending);
+	}];
+}
+
+#pragma mark -
 #pragma mark NSURLConnectionDelegate
 
 + (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
