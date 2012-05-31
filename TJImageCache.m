@@ -111,12 +111,17 @@
 	if (!image && depth != TJImageCacheDepthMemory) {
 		
 		[[TJImageCache _readQueue] addOperationWithBlock:^{
-			image = [UIImage imageWithContentsOfFile:[TJImageCache _pathForURL:url]];
+			NSString *path = [TJImageCache _pathForURL:url];
+			image = [UIImage imageWithContentsOfFile:path];
 			
 			if (image) {
-				// tell delegate about success
+				// update last access date
+				[[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
+				
+				// add to in-memory cache
 				[[TJImageCache _cache] setObject:image forKey:hash];
 				
+				// tell delegate about success
 				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
 					[image retain];
 					dispatch_async(dispatch_get_main_queue(), ^{
