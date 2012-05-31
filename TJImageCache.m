@@ -158,7 +158,7 @@
 							[connection release];
 						}
 						
-						[[TJImageCache _requestLock] lock];
+						[[TJImageCache _requestLock] unlock];
 					});
 				} else {
 					// tell delegate about failure
