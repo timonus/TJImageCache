@@ -10,21 +10,29 @@
 @interface TJImageCacheConnection : NSURLConnection
 
 @property (nonatomic, retain) NSMutableData *data;
-@property (retain) NSMutableSet *delegates;
+@property (readonly) NSMutableSet *delegates;
 @property (nonatomic, retain) NSString *url;
 
 @end
 
 @implementation TJImageCacheConnection : NSURLConnection
 
-@synthesize data;
-@synthesize delegates;
-@synthesize url;
+@synthesize data = _data;
+@synthesize delegates = _delegates;
+@synthesize url = _url;
+
+- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate {
+	if ((self = [super initWithRequest:request delegate:delegate])) {
+		_delegates = [[NSMutableSet alloc] init];
+	}
+	
+	return self;
+}
 
 - (void)dealloc {
-	[data release];
-	[delegates release];
-	[url release];
+	[_data release];
+	[_delegates release];
+	[_url release];
 	
 	[super dealloc];
 }
@@ -116,12 +124,16 @@
 						if ([[TJImageCache _requests] objectForKey:hash]) {
 							if (delegate) {
 								TJImageCacheConnection *connection = [[TJImageCache _requests] objectForKey:hash];
-								[connection.delegates addObject:delegate];
+								if (delegate) {
+									[connection.delegates addObject:delegate];
+								}
 							}
 						} else {
 							TJImageCacheConnection *connection = [[TJImageCacheConnection alloc] initWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] delegate:[TJImageCache class]];
 							connection.url = [[url copy] autorelease];
-							connection.delegates = [NSMutableSet setWithObjects:delegate, nil];
+							if (delegate) {
+								[connection.delegates addObject:delegate];
+							}
 							
 							[[TJImageCache _requests] setObject:connection forKey:hash];
 							[connection release];
