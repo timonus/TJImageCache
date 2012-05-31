@@ -18,8 +18,9 @@ typedef enum {
 
 @interface TJImageCache : NSObject
 
-+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
++ (NSString *)hash:(NSString *)string;
 
++ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
 + (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate;
 + (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth;
 + (UIImage *)imageAtURL:(NSString *)url;

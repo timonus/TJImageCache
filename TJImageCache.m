@@ -45,7 +45,6 @@
 @interface TJImageCache ()
 
 + (NSString *)_pathForURL:(NSString *)url;
-+ (NSString *)_hash:(NSString *)string;
 
 + (NSMutableDictionary *)_requests;
 + (NSRecursiveLock *)_requestLock;
@@ -57,6 +56,21 @@
 @end
 
 @implementation TJImageCache
+
+#pragma mark -
+#pragma mark Hashing
+
++ (NSString *)hash:(NSString *)string {
+	const char* str = [string UTF8String];
+    unsigned char result[CC_MD5_DIGEST_LENGTH];
+    CC_MD5(str, strlen(str), result);
+	
+    NSMutableString *ret = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH*2];
+    for(int i = 0; i<CC_MD5_DIGEST_LENGTH; i++) {
+        [ret appendFormat:@"%02x",result[i]];
+    }
+    return ret;
+}
 
 #pragma mark -
 #pragma mark Image Fetching
@@ -89,7 +103,7 @@
 	
 	// Load from memory
 	
-	NSString *hash = [TJImageCache _hash:url];
+	NSString *hash = [TJImageCache hash:url];
 	__block UIImage *image = [[TJImageCache _cache] objectForKey:hash];
 	
 	// Load from disk
@@ -161,7 +175,7 @@
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *)url {
 	
-	if ([[TJImageCache _cache] objectForKey:[TJImageCache _hash:url]]) {
+	if ([[TJImageCache _cache] objectForKey:[TJImageCache hash:url]]) {
 		return TJImageCacheDepthMemory;
 	}
 	
@@ -176,7 +190,7 @@
 #pragma mark Cache Manipulation
 
 + (void)removeImageAtURL:(NSString *)url {
-	[[TJImageCache _cache] removeObjectForKey:[TJImageCache _hash:url]];
+	[[TJImageCache _cache] removeObjectForKey:[TJImageCache hash:url]];
 	
 	[[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:url] error:nil];
 }
@@ -212,7 +226,7 @@
 		NSString *url = [(TJImageCacheConnection *)connection url];
 	
 		// Cache in Memory
-		[[TJImageCache _cache] setObject:image forKey:[TJImageCache _hash:url]];
+		[[TJImageCache _cache] setObject:image forKey:[TJImageCache hash:url]];
 		
 		// Cache to Disk
 		[[TJImageCache _writeQueue] addOperationWithBlock:^{
@@ -227,7 +241,7 @@
 		}
 		
 		// Remove the connection
-		[[TJImageCache _requests] removeObjectForKey:[TJImageCache _hash:url]];
+		[[TJImageCache _requests] removeObjectForKey:[TJImageCache hash:url]];
 		
 	} else {
 		[TJImageCache performSelector:@selector(connection:didFailWithError:) withObject:connection withObject:nil];
@@ -249,7 +263,7 @@
 	}
 	
 	// Remove the connection
-	[[TJImageCache _requests] removeObjectForKey:[TJImageCache _hash:url]];
+	[[TJImageCache _requests] removeObjectForKey:[TJImageCache hash:url]];
 	
 	[[TJImageCache _requestLock] unlock];
 }
@@ -265,21 +279,9 @@
 	});
 	
 	if (url) {
-		return [path stringByAppendingPathComponent:[TJImageCache _hash:url]];
+		return [path stringByAppendingPathComponent:[TJImageCache hash:url]];
 	}
 	return path;
-}
-
-+ (NSString *)_hash:(NSString *)string {
-	const char* str = [string UTF8String];
-    unsigned char result[CC_MD5_DIGEST_LENGTH];
-    CC_MD5(str, strlen(str), result);
-	
-    NSMutableString *ret = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH*2];
-    for(int i = 0; i<CC_MD5_DIGEST_LENGTH; i++) {
-        [ret appendFormat:@"%02x",result[i]];
-    }
-    return ret;
 }
 
 + (NSMutableDictionary *)_requests {
