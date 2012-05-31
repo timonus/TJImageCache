@@ -1,5 +1,4 @@
 // TJImageCache
-// TJImageCache
 // By Tim Johnsen
 
 #import "TJImageCache.h"
