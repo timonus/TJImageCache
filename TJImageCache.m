@@ -143,9 +143,7 @@
 						if ([[TJImageCache _requests] objectForKey:hash]) {
 							if (delegate) {
 								TJImageCacheConnection *connection = [[TJImageCache _requests] objectForKey:hash];
-								if (delegate) {
-									[connection.delegates addObject:delegate];
-								}
+								[connection.delegates addObject:delegate];
 							}
 						} else {
 							TJImageCacheConnection *connection = [[TJImageCacheConnection alloc] initWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] delegate:[TJImageCache class]];
