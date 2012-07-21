@@ -3,6 +3,7 @@
 
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
+#import <sys/xattr.h>
 
 #pragma mark -
 #pragma mark TJImageCacheConnection
@@ -47,6 +48,7 @@
 
 @interface TJImageCache ()
 
++ (void)_createDirectory;
 + (NSString *)_pathForURL:(NSString *)url;
 
 + (NSMutableDictionary *)_requestDelegates;
@@ -96,12 +98,9 @@
 		return nil;
 	}
 	
-	static dispatch_once_t token;
-	dispatch_once(&token, ^{
-		BOOL isDir = NO;
-		if (!([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForURL:nil] isDirectory:&isDir] && isDir)) {
-			[[NSFileManager defaultManager] createDirectoryAtPath:[TJImageCache _pathForURL:nil] withIntermediateDirectories:YES attributes:nil error:nil];
-		}
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		[self _createDirectory];
 	});
 	
 	// Load from memory
@@ -238,7 +237,7 @@
 
 + (void)dumpDiskCache {
 	[[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:nil] error:nil];
-	[[NSFileManager defaultManager] createDirectoryAtPath:[TJImageCache _pathForURL:nil] withIntermediateDirectories:YES attributes:nil error:nil];
+	[self _createDirectory];
 }
 
 + (void)dumpMemoryCache {
@@ -282,11 +281,26 @@
 #pragma mark -
 #pragma mark Private
 
++ (void)_createDirectory {
+	BOOL isDir = NO;
+	NSString *path = [TJImageCache _pathForURL:nil];
+	if (!([[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDir] && isDir)) {
+		[[NSFileManager defaultManager] createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
+		
+		// Don't back up
+		
+		const char* filePath = [path fileSystemRepresentation];
+		const char* attrName = "com.apple.MobileBackup";
+		u_int8_t attrValue = 1;
+		setxattr(filePath, attrName, &attrValue, sizeof(attrValue), 0, 0);
+	}
+}
+
 + (NSString *)_pathForURL:(NSString *)url {
 	static NSString *path = nil;
 	static dispatch_once_t token;
 	dispatch_once(&token, ^{
-		path = [[[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"Caches/TJImageCache"] retain];
+		path = [[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"] retain];
 	});
 	
 	if (url) {
