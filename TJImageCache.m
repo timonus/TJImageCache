@@ -167,7 +167,7 @@
 									
 									// Cache to Disk
 									[[TJImageCache _writeQueue] addOperationWithBlock:^{
-										[UIImagePNGRepresentation(image) writeToFile:[TJImageCache _pathForURL:url] atomically:YES];
+										[data writeToFile:path atomically:YES];
 									}];
 									
 									[[TJImageCache _requestLock] lock];
