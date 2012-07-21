@@ -50,7 +50,6 @@
 + (NSString *)_pathForURL:(NSString *)url;
 
 + (NSMutableDictionary *)_requestDelegates;
-+ (NSRecursiveLock *)_requestLock;
 + (NSCache *)_cache;
 
 + (NSOperationQueue *)_networkQueue;
@@ -170,34 +169,29 @@
 										[data writeToFile:path atomically:YES];
 									}];
 									
-									[[TJImageCache _requestLock] lock];
-									
-									// Inform Delegates
-									for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-										if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-											[delegate didGetImage:image atURL:url];
+									dispatch_async(dispatch_get_main_queue(), ^{
+										// Inform Delegates
+										for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+											if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+												[delegate didGetImage:image atURL:url];
+											}
 										}
-									}
-									
-									// Remove the connection
-									[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
-									
-									[[TJImageCache _requestLock] unlock];
-									
+										
+										// Remove the connection
+										[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+									});
 								} else {
-									[[TJImageCache _requestLock] lock];
-									
-									// Inform Delegates
-									for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-										if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-											[delegate didFailToGetImageAtURL:url];
+									dispatch_async(dispatch_get_main_queue(), ^{
+										// Inform Delegates
+										for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+											if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+												[delegate didFailToGetImageAtURL:url];
+											}
 										}
-									}
-									
-									// Remove the connection
-									[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
-									
-									[[TJImageCache _requestLock] unlock];
+										
+										// Remove the connection
+										[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+									});
 								}
 							}];
 						}
@@ -310,16 +304,6 @@
 	});
 	
 	return requests;
-}
-
-+ (NSRecursiveLock *)_requestLock {
-	static NSRecursiveLock *lock = nil;
-	static dispatch_once_t token;
-	dispatch_once(&token, ^{
-		lock = [[NSRecursiveLock alloc] init];
-	});
-	
-	return lock;
 }
 
 + (NSCache *)_cache {
