@@ -7,34 +7,37 @@
 #pragma mark -
 #pragma mark TJImageCacheConnection
 
-@interface TJImageCacheConnection : NSURLConnection
+// This class allows for backwards compatibility with NSURLConnection's sendAsynchronousRequest:queue:completionHandler: in iOS 4
 
-@property (nonatomic, retain) NSMutableData *data;
-@property (readonly) NSMutableSet *delegates;
-@property (nonatomic, retain) NSString *url;
+@interface TJImageCacheConnection : NSURLConnection
 
 @end
 
-@implementation TJImageCacheConnection : NSURLConnection
+@implementation TJImageCacheConnection
 
-@synthesize data = _data;
-@synthesize delegates = _delegates;
-@synthesize url = _url;
-
-- (id)initWithRequest:(NSURLRequest *)request delegate:(id)delegate {
-	if ((self = [super initWithRequest:request delegate:delegate])) {
-		_delegates = [[NSMutableSet alloc] init];
++ (void)sendAsynchronousRequest:(NSURLRequest *)request queue:(NSOperationQueue *)queue completionHandler:(void (^)(NSURLResponse *, NSData *, NSError *))handler {
+	
+	static BOOL canSendAsync = NO;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		if ([super respondsToSelector:@selector(sendAsynchronousRequest:queue:completionHandler:)]) {
+			canSendAsync = YES;
+		}
+	});
+	
+	if (canSendAsync) {
+		[super sendAsynchronousRequest:request queue:queue completionHandler:handler];
+	} else {
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+			NSURLResponse *response = nil;
+			NSError *error = nil;
+			NSData *data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
+			
+			[queue addOperationWithBlock:^{
+				handler(response, data, error);
+			}];
+		});
 	}
-	
-	return self;
-}
-
-- (void)dealloc {
-	[_data release];
-	[_delegates release];
-	[_url release];
-	
-	[super dealloc];
 }
 
 @end
@@ -46,10 +49,11 @@
 
 + (NSString *)_pathForURL:(NSString *)url;
 
-+ (NSMutableDictionary *)_requests;
++ (NSMutableDictionary *)_requestDelegates;
 + (NSRecursiveLock *)_requestLock;
 + (NSCache *)_cache;
 
++ (NSOperationQueue *)_networkQueue;
 + (NSOperationQueue *)_readQueue;
 + (NSOperationQueue *)_writeQueue;
 
@@ -138,25 +142,65 @@
 						
 						// Load from the interwebs using NSURLConnection delegate
 						
-						[[TJImageCache _requestLock] lock];
-						
-						if ([[TJImageCache _requests] objectForKey:hash]) {
+						if ([[TJImageCache _requestDelegates] objectForKey:hash]) {
 							if (delegate) {
-								TJImageCacheConnection *connection = [[TJImageCache _requests] objectForKey:hash];
-								[connection.delegates addObject:delegate];
+								NSMutableSet *delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
+								[delegatesForConnection addObject:delegate];
 							}
 						} else {
-							TJImageCacheConnection *connection = [[TJImageCacheConnection alloc] initWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] delegate:[TJImageCache class]];
-							connection.url = [[url copy] autorelease];
+							NSMutableSet *delegatesForConnection = [[[NSMutableSet alloc] init] autorelease];
 							if (delegate) {
-								[connection.delegates addObject:delegate];
+								[delegatesForConnection addObject:delegate];
 							}
 							
-							[[TJImageCache _requests] setObject:connection forKey:hash];
-							[connection release];
+							[[self _requestDelegates] setObject:delegatesForConnection forKey:hash];
+							
+							[TJImageCacheConnection sendAsynchronousRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] queue:[self _networkQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
+								
+								// process image
+								UIImage *image = [UIImage imageWithData:data];
+								
+								if (image) {
+									
+									// Cache in Memory
+									[[TJImageCache _cache] setObject:image forKey:hash];
+									
+									// Cache to Disk
+									[[TJImageCache _writeQueue] addOperationWithBlock:^{
+										[UIImagePNGRepresentation(image) writeToFile:[TJImageCache _pathForURL:url] atomically:YES];
+									}];
+									
+									[[TJImageCache _requestLock] lock];
+									
+									// Inform Delegates
+									for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+										if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+											[delegate didGetImage:image atURL:url];
+										}
+									}
+									
+									// Remove the connection
+									[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+									
+									[[TJImageCache _requestLock] unlock];
+									
+								} else {
+									[[TJImageCache _requestLock] lock];
+									
+									// Inform Delegates
+									for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+										if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+											[delegate didFailToGetImageAtURL:url];
+										}
+									}
+									
+									// Remove the connection
+									[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+									
+									[[TJImageCache _requestLock] unlock];
+								}
+							}];
 						}
-						
-						[[TJImageCache _requestLock] unlock];
 					});
 				} else {
 					// tell delegate about failure
@@ -242,70 +286,6 @@
 }
 
 #pragma mark -
-#pragma mark NSURLConnectionDelegate
-
-+ (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
-	[(TJImageCacheConnection *)connection setData:[NSMutableData data]];
-}
-
-+ (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)theData {
-	[[(TJImageCacheConnection *)connection data] appendData:theData];
-}
-
-+ (void)connectionDidFinishLoading:(NSURLConnection *)connection {
-	[[TJImageCache _requestLock] lock];
-	
-	// process image
-	UIImage *image = [UIImage imageWithData:[(TJImageCacheConnection *)connection data]];
-	
-	if (image) {
-		
-		NSString *url = [(TJImageCacheConnection *)connection url];
-	
-		// Cache in Memory
-		[[TJImageCache _cache] setObject:image forKey:[TJImageCache hash:url]];
-		
-		// Cache to Disk
-		[[TJImageCache _writeQueue] addOperationWithBlock:^{
-			[UIImagePNGRepresentation(image) writeToFile:[TJImageCache _pathForURL:url] atomically:YES];
-		}];
-		
-		// Inform Delegates
-		for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
-			if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-				[delegate didGetImage:image atURL:url];
-			}
-		}
-		
-		// Remove the connection
-		[[TJImageCache _requests] removeObjectForKey:[TJImageCache hash:url]];
-		
-	} else {
-		[TJImageCache performSelector:@selector(connection:didFailWithError:) withObject:connection withObject:nil];
-	}
-	
-	[[TJImageCache _requestLock] unlock];
-}
-
-+ (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
-	[[TJImageCache _requestLock] lock];
-	
-	NSString *url = [(TJImageCacheConnection *)connection url];
-	
-	// Inform Delegates
-	for (id delegate in [(TJImageCacheConnection *)connection delegates]) {
-		if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-			[delegate didFailToGetImageAtURL:url];
-		}
-	}
-	
-	// Remove the connection
-	[[TJImageCache _requests] removeObjectForKey:[TJImageCache hash:url]];
-	
-	[[TJImageCache _requestLock] unlock];
-}
-
-#pragma mark -
 #pragma mark Private
 
 + (NSString *)_pathForURL:(NSString *)url {
@@ -321,7 +301,7 @@
 	return path;
 }
 
-+ (NSMutableDictionary *)_requests {
++ (NSMutableDictionary *)_requestDelegates {
 	static NSMutableDictionary *requests = nil;
 	static dispatch_once_t token;
 	
@@ -354,13 +334,26 @@
 	return cache;
 }
 
++ (NSOperationQueue *)_networkQueue {
+	static NSOperationQueue *queue = nil;
+	static dispatch_once_t token;
+
+	dispatch_once(&token, ^{
+	queue = [[NSOperationQueue alloc] init];
+		[queue setMaxConcurrentOperationCount:1];
+	});
+
+	return queue;
+}
+
+
 + (NSOperationQueue *)_readQueue {
 	static NSOperationQueue *queue = nil;
 	static dispatch_once_t token;
 	
 	dispatch_once(&token, ^{
 		queue = [[NSOperationQueue alloc] init];
-		[queue setMaxConcurrentOperationCount:4];
+		[queue setMaxConcurrentOperationCount:1];
 	});
 	
 	return queue;
@@ -372,7 +365,7 @@
 	
 	dispatch_once(&token, ^{
 		queue = [[NSOperationQueue alloc] init];
-		[queue setMaxConcurrentOperationCount:4];
+		[queue setMaxConcurrentOperationCount:1];
 	});
 	
 	return queue;
