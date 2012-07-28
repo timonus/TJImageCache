@@ -12,6 +12,8 @@
 
 @interface TJImageCacheConnection : NSURLConnection
 
++ (void)sendAsynchronousRequest:(NSURLRequest *)request queue:(NSOperationQueue *)queue completionHandler:(void (^)(NSURLResponse *, NSData *, NSError *))handler;
+
 @end
 
 @implementation TJImageCacheConnection
@@ -21,7 +23,7 @@
 	static BOOL canSendAsync = NO;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		if ([super respondsToSelector:@selector(sendAsynchronousRequest:queue:completionHandler:)]) {
+		if ([[self superclass] respondsToSelector:@selector(sendAsynchronousRequest:queue:completionHandler:)]) {
 			canSendAsync = YES;
 		}
 	});
