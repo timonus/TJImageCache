@@ -1,7 +1,7 @@
 // TJImageCache
 // By Tim Johnsen
 
-#define IMAGE_CLASS UIImage
+#define IMAGE_CLASS NSImage
 
 typedef enum {
 	TJImageCacheDepthMemory,
