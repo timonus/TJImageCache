@@ -1,6 +1,8 @@
 // TJImageCache
 // By Tim Johnsen
 
+#define IMAGE_CLASS UIImage
+
 typedef enum {
 	TJImageCacheDepthMemory,
 	TJImageCacheDepthDisk,
@@ -11,7 +13,7 @@ typedef enum {
 
 @optional
 
-- (void)didGetImage:(UIImage *)image atURL:(NSString *)url;
+- (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url;
 - (void)didFailToGetImageAtURL:(NSString *)url;
 
 @end
@@ -20,10 +22,10 @@ typedef enum {
 
 + (NSString *)hash:(NSString *)string;
 
-+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
-+ (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate;
-+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth;
-+ (UIImage *)imageAtURL:(NSString *)url;
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate;
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth;
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *)url;
 

@@ -82,19 +82,19 @@
 #pragma mark -
 #pragma mark Image Fetching
 
-+ (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate {
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate {
 	return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
 }
 
-+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth {
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth {
 	return [self imageAtURL:url depth:depth delegate:nil];
 }
 
-+ (UIImage *)imageAtURL:(NSString *)url {
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url {
 	return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:nil];
 }
 
-+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
++ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
 	
 	if (!url) {
 		return nil;
@@ -108,7 +108,7 @@
 	// Load from memory
 	
 	NSString *hash = [TJImageCache hash:url];
-	__block UIImage *image = [[TJImageCache _cache] objectForKey:hash];
+	__block IMAGE_CLASS *image = [[TJImageCache _cache] objectForKey:hash];
 	
 	// Load from disk
 	
@@ -116,7 +116,7 @@
 		
 		[[TJImageCache _readQueue] addOperationWithBlock:^{
 			NSString *path = [TJImageCache _pathForURL:url];
-			image = [UIImage imageWithContentsOfFile:path];
+			image = [[[IMAGE_CLASS alloc] initWithContentsOfFile:path] autorelease];
 			
 			if (image) {
 				// update last access date
@@ -158,7 +158,7 @@
 							[TJImageCacheConnection sendAsynchronousRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] queue:[self _networkQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
 								
 								// process image
-								UIImage *image = [UIImage imageWithData:data];
+								IMAGE_CLASS *image = [[[IMAGE_CLASS alloc] initWithData:data] autorelease];
 								
 								if (image) {
 									
