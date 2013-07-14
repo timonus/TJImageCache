@@ -1,7 +1,7 @@
 # TJImageCache
 *Yet another Objective-C image cache.*
 
-This is a reimagined version of TJImageDatabase, the image caching system I started with NGadget and have used in numerous other Apps including [Wootie](http://j.mp/wootie) and [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8). It's designed for ease-of-use for the developer and to not bog down the system.
+This is a reimagined version of the image cache I used for NGadget and have used in other apps including [Wootie](http://j.mp/wootie) and [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8). It's designed for ease-of-use and performance.
 
 ## Fetching an Image
 
@@ -13,6 +13,16 @@ To fetch an image, use one of the following methods.
 4. `+ (UIImage *)imageAtURL:(NSString *)url`
 
 In the event that the image is already in memory, each of these methods returns a `UIImage *`. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
+
+## Auditing
+
+To clean up on-disk images, use one of the following methods.
+
+1. `+ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block`
+2. `+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date`
+3. `+ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *)date`
+
+The first allows you to implement your own auditing policy, 2 and 3 are provided for convenience.
 
 ## About TJImageCacheDepth
 
