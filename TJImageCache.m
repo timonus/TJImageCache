@@ -179,7 +179,7 @@
 										}
 										
 										// Remove the connection
-										[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+										[[TJImageCache _requestDelegates] removeObjectForKey:hash];
 									});
 								} else {
 									dispatch_async(dispatch_get_main_queue(), ^{
@@ -191,7 +191,7 @@
 										}
 										
 										// Remove the connection
-										[[TJImageCache _requestDelegates] removeObjectForKey:[TJImageCache hash:url]];
+										[[TJImageCache _requestDelegates] removeObjectForKey:hash];
 									});
 								}
 							}];
