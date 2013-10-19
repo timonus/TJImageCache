@@ -116,7 +116,7 @@
 		
 		[[TJImageCache _readQueue] addOperationWithBlock:^{
 			NSString *path = [TJImageCache _pathForURL:url];
-			image = [[[IMAGE_CLASS alloc] initWithContentsOfFile:path] autorelease];
+			image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
 			
 			if (image) {
 				// update last access date
@@ -127,10 +127,8 @@
 				
 				// tell delegate about success
 				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-					[image retain];
 					dispatch_async(dispatch_get_main_queue(), ^{
 						[delegate didGetImage:image atURL:url];
-						[image release];
 					});
 				}
 			} else {
@@ -148,7 +146,7 @@
 								[delegatesForConnection addObject:delegate];
 							}
 						} else {
-							NSMutableSet *delegatesForConnection = [[[NSMutableSet alloc] init] autorelease];
+							NSMutableSet *delegatesForConnection = [[NSMutableSet alloc] init];
 							if (delegate) {
 								[delegatesForConnection addObject:delegate];
 							}
@@ -158,7 +156,7 @@
 							[TJImageCacheConnection sendAsynchronousRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] queue:[self _networkQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
 								
 								// process image
-								IMAGE_CLASS *image = [[[IMAGE_CLASS alloc] initWithData:data] autorelease];
+								IMAGE_CLASS *image = [[IMAGE_CLASS alloc] initWithData:data];
 								
 								if (image) {
 									
@@ -302,7 +300,7 @@
 	static NSString *path = nil;
 	static dispatch_once_t token;
 	dispatch_once(&token, ^{
-		path = [[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"] retain];
+		path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"];
 	});
 	
 	if (url) {
