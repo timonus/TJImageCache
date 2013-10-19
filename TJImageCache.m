@@ -142,11 +142,16 @@
 						
 						if ([[TJImageCache _requestDelegates] objectForKey:hash]) {
 							if (delegate) {
-								NSMutableSet *delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
+                                id delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
 								[delegatesForConnection addObject:delegate];
 							}
 						} else {
-							NSMutableSet *delegatesForConnection = [[NSMutableSet alloc] init];
+							id delegatesForConnection = nil;
+                            if ([NSHashTable class]) {
+                                delegatesForConnection = [NSHashTable weakObjectsHashTable];
+                            } else {
+                                delegatesForConnection = [[NSMutableSet alloc] init];
+                            }
 							if (delegate) {
 								[delegatesForConnection addObject:delegate];
 							}
