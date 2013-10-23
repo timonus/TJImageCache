@@ -33,7 +33,8 @@ typedef enum {
 + (void)dumpDiskCache;
 + (void)dumpMemoryCache;
 
-+ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block;		// return YES to preserve the image, return NO to delete it
++ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock; // return YES to preserve the image, return NO to delete it
++ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block;
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date;
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *)date;
 

@@ -250,7 +250,7 @@
 #pragma mark -
 #pragma mark Cache Auditing
 
-+ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block {
++ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock {
 	dispatch_sync(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
 		NSString *basePath = [TJImageCache _pathForURL:nil];
 		NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:basePath error:nil];
@@ -266,7 +266,15 @@
 				}
 			}
 		}
+        
+        if (completionBlock) {
+            completionBlock();
+        }
 	});
+}
+
++ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block {
+    [self auditCacheWithBlock:block completionBlock:nil];
 }
 
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date {
