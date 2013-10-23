@@ -118,6 +118,8 @@
 + (NSOperationQueue *)_readQueue;
 + (NSOperationQueue *)_writeQueue;
 
++ (TJTreeNode *)_auditHashTree;
+
 @end
 
 @implementation TJImageCache
@@ -349,6 +351,21 @@
 	}];
 }
 
++ (void)addAuditImageURLToPreserve:(NSString *)url {
+    NSString *hash = [self hash:url];
+    const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
+    [[self _auditHashTree] addString:string];
+}
+
++ (void)commitAuditCache {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+        const char *string = [hashedURL cStringUsingEncoding:NSUTF8StringEncoding];
+        return [[self _auditHashTree] containsString:string];
+    } completionBlock:^{
+        [[self _auditHashTree] reset];
+    }];
+}
+
 #pragma mark -
 #pragma mark Private
 
@@ -438,6 +455,17 @@
 	});
 	
 	return queue;
+}
+
++ (TJTreeNode *)_auditHashTree {
+    static TJTreeNode *rootNode = nil;
+    static dispatch_once_t token;
+    
+    dispatch_once(&token, ^{
+        rootNode = [[TJTreeNode alloc] init];
+    });
+    
+    return rootNode;
 }
 
 @end
