@@ -113,6 +113,7 @@
 
 + (NSMutableDictionary *)_requestDelegates;
 + (NSCache *)_cache;
++ (id)_mapTable;
 
 + (NSOperationQueue *)_networkQueue;
 + (NSOperationQueue *)_readQueue;
@@ -169,6 +170,15 @@
 	
 	NSString *hash = [TJImageCache hash:url];
 	__block IMAGE_CLASS *image = [[TJImageCache _cache] objectForKey:hash];
+    
+    // Load from other object potentially hanging on to reference
+    
+    if (!image) {
+        image = [[TJImageCache _mapTable] objectForKey:hash];
+        if (image) {
+            [[TJImageCache _cache] setObject:image forKey:hash];
+        }
+    }
 	
 	// Load from disk
 	
@@ -184,6 +194,7 @@
 				
 				// add to in-memory cache
 				[[TJImageCache _cache] setObject:image forKey:hash];
+                [[TJImageCache _mapTable] setObject:image forKey:hash];
 				
 				// tell delegate about success
 				if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
@@ -227,6 +238,7 @@
 									
 									// Cache in Memory
 									[[TJImageCache _cache] setObject:image forKey:hash];
+                                    [[TJImageCache _mapTable] setObject:image forKey:hash];
 									
 									// Cache to Disk
 									[[TJImageCache _writeQueue] addOperationWithBlock:^{
@@ -417,6 +429,19 @@
 	});
 	
 	return cache;
+}
+
++ (id)_mapTable {
+    static id mapTable = nil;
+	static dispatch_once_t token;
+	
+	dispatch_once(&token, ^{
+        if ([NSMapTable class]) {
+            mapTable = [NSMapTable weakToWeakObjectsMapTable];
+        }
+	});
+	
+	return mapTable;
 }
 
 + (NSOperationQueue *)_networkQueue {
