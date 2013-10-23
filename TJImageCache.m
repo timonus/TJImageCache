@@ -125,7 +125,6 @@
 
 @implementation TJImageCache
 
-#pragma mark -
 #pragma mark Hashing
 
 + (NSString *)hash:(NSString *)string {
@@ -140,7 +139,6 @@
     return ret;
 }
 
-#pragma mark -
 #pragma mark Image Fetching
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate {
@@ -287,7 +285,6 @@
 	return image;
 }
 
-#pragma mark -
 #pragma mark Cache Checking
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *)url {
@@ -303,7 +300,6 @@
 	return TJImageCacheDepthInternet;
 }
 
-#pragma mark -
 #pragma mark Cache Manipulation
 
 + (void)removeImageAtURL:(NSString *)url {
@@ -321,7 +317,6 @@
 	[[TJImageCache _cache] removeAllObjects];
 }
 
-#pragma mark -
 #pragma mark Cache Auditing
 
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock {
@@ -378,7 +373,6 @@
     }];
 }
 
-#pragma mark -
 #pragma mark Private
 
 + (void)_createDirectory {
