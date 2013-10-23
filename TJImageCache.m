@@ -5,8 +5,7 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <sys/xattr.h>
 
-#pragma mark -
-#pragma mark TJImageCacheConnection
+#pragma mark - TJImageCacheConnection
 
 // This class allows for backwards compatibility with NSURLConnection's sendAsynchronousRequest:queue:completionHandler: in iOS 4
 
@@ -45,8 +44,7 @@
 
 @end
 
-#pragma mark -
-#pragma mark TJImageCache
+#pragma mark - TJImageCache
 
 @interface TJImageCache ()
 
