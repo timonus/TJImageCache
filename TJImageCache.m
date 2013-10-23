@@ -44,6 +44,66 @@
 
 @end
 
+#pragma mark - TJTree
+
+@interface TJTreeNode : NSObject {
+    NSMutableDictionary *childrenForCharacters;
+    BOOL isEnd;
+}
+
+- (void)addString:(const char *)hash;
+- (BOOL)containsString:(const char *)string;
+
+- (void)reset;
+
+@end
+
+@implementation TJTreeNode
+
+- (void)addString:(const char *)string {
+    @synchronized(self) {
+        if (strlen(string) == 0) {
+            isEnd = YES;
+        } else {
+            // Lazily generate our child mapping
+            if (!childrenForCharacters) {
+                childrenForCharacters = [[NSMutableDictionary alloc] init];
+            }
+            
+            // Lazily add the child node if needed
+            NSNumber *key = @(string[0]);
+            if (!childrenForCharacters[key]) {
+                childrenForCharacters[key] = [[TJTreeNode alloc] init];
+            }
+            
+            // Add string to child starting with next character
+            [childrenForCharacters[key] addString:string + 1];
+        }
+    }
+}
+
+- (BOOL)containsString:(const char *)string {
+    BOOL containsString = NO;
+    @synchronized(self) {
+        if (strlen(string) == 0 && isEnd) {
+            containsString = YES;
+        } else {
+            NSNumber *key = @(string[0]);
+            containsString = [childrenForCharacters[key] containsString:string + 1];
+        }
+    }
+    return containsString;
+}
+
+- (void)reset {
+    @synchronized(self) {
+        childrenForCharacters = nil;
+        isEnd = NO;
+    }
+}
+
+@end
+
 #pragma mark - TJImageCache
 
 @interface TJImageCache ()
