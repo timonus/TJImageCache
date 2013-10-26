@@ -445,7 +445,7 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 	static dispatch_once_t token;
 
 	dispatch_once(&token, ^{
-	queue = [[NSOperationQueue alloc] init];
+        queue = [[NSOperationQueue alloc] init];
 		[queue setMaxConcurrentOperationCount:1];
 	});
 
