@@ -61,45 +61,39 @@
 @implementation TJTreeNode
 
 - (void)addString:(const char *)string {
-    @synchronized(self) {
-        if (strlen(string) == 0) {
-            isEnd = YES;
-        } else {
-            // Lazily generate our child mapping
-            if (!childrenForCharacters) {
-                childrenForCharacters = [[NSMutableDictionary alloc] init];
-            }
-            
-            // Lazily add the child node if needed
-            NSNumber *key = @(string[0]);
-            if (!childrenForCharacters[key]) {
-                childrenForCharacters[key] = [[TJTreeNode alloc] init];
-            }
-            
-            // Add string to child starting with next character
-            [childrenForCharacters[key] addString:string + 1];
+    if (strlen(string) == 0) {
+        isEnd = YES;
+    } else {
+        // Lazily generate our child mapping
+        if (!childrenForCharacters) {
+            childrenForCharacters = [[NSMutableDictionary alloc] init];
         }
+        
+        // Lazily add the child node if needed
+        NSNumber *key = @(string[0]);
+        if (!childrenForCharacters[key]) {
+            childrenForCharacters[key] = [[TJTreeNode alloc] init];
+        }
+        
+        // Add string to child starting with next character
+        [childrenForCharacters[key] addString:string + 1];
     }
 }
 
 - (BOOL)containsString:(const char *)string {
     BOOL containsString = NO;
-    @synchronized(self) {
-        if (strlen(string) == 0 && isEnd) {
-            containsString = YES;
-        } else {
-            NSNumber *key = @(string[0]);
-            containsString = [childrenForCharacters[key] containsString:string + 1];
-        }
+    if (strlen(string) == 0 && isEnd) {
+        containsString = YES;
+    } else {
+        NSNumber *key = @(string[0]);
+        containsString = [childrenForCharacters[key] containsString:string + 1];
     }
     return containsString;
 }
 
 - (void)reset {
-    @synchronized(self) {
-        childrenForCharacters = nil;
-        isEnd = NO;
-    }
+    childrenForCharacters = nil;
+    isEnd = NO;
 }
 
 @end
@@ -319,8 +313,10 @@
 
 #pragma mark Cache Auditing
 
+CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
+
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock {
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+    NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
 		NSString *basePath = [TJImageCache _pathForURL:nil];
 		NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:basePath error:nil];
 
@@ -339,7 +335,9 @@
         if (completionBlock) {
             completionBlock();
         }
-	});
+    }];
+    [auditOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
+    [[TJImageCache _auditQueue] addOperation:auditOperation];
 }
 
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block {
@@ -359,9 +357,13 @@
 }
 
 + (void)addAuditImageURLToPreserve:(NSString *)url {
-    NSString *hash = [self hash:url];
-    const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
-    [[self _auditHashTree] addString:string];
+    NSBlockOperation *addURLOperation = [NSBlockOperation blockOperationWithBlock:^{
+        NSString *hash = [self hash:url];
+        const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
+        [[self _auditHashTree] addString:string];
+    }];
+    [addURLOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
+    [[TJImageCache _auditQueue] addOperation:addURLOperation];
 }
 
 + (void)commitAuditCache {
@@ -464,6 +466,18 @@
 }
 
 + (NSOperationQueue *)_writeQueue {
+	static NSOperationQueue *queue = nil;
+	static dispatch_once_t token;
+	
+	dispatch_once(&token, ^{
+		queue = [[NSOperationQueue alloc] init];
+		[queue setMaxConcurrentOperationCount:1];
+	});
+	
+	return queue;
+}
+
++ (NSOperationQueue *)_auditQueue {
 	static NSOperationQueue *queue = nil;
 	static dispatch_once_t token;
 	
