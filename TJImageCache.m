@@ -358,7 +358,7 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 
 + (void)addAuditImageURLToPreserve:(NSString *)url {
     NSBlockOperation *addURLOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSString *hash = [self hash:url];
+        NSString *hash = [[self hash:url] substringToIndex:5];
         const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
         [[self _auditHashTree] addString:string];
     }];
