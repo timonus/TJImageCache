@@ -216,7 +216,7 @@
 							}
 						} else {
 							id delegatesForConnection = nil;
-                            if ([NSHashTable class]) {
+                            if ([NSHashTable class] && [[NSHashTable class] respondsToSelector:@selector(weakObjectsHashTable)]) {
                                 delegatesForConnection = [NSHashTable weakObjectsHashTable];
                             } else {
                                 delegatesForConnection = [[NSMutableSet alloc] init];
@@ -430,7 +430,7 @@
 	static dispatch_once_t token;
 	
 	dispatch_once(&token, ^{
-        if ([NSMapTable class]) {
+        if ([NSMapTable class] && [[NSMapTable class] respondsToSelector:@selector(weakToWeakObjectsMapTable)]) {
             mapTable = [NSMapTable weakToWeakObjectsMapTable];
         }
 	});
