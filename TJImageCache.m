@@ -356,9 +356,11 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 	}];
 }
 
+const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
+
 + (void)addAuditImageURLToPreserve:(NSString *)url {
     NSBlockOperation *addURLOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSString *hash = [[self hash:url] substringToIndex:5];
+        NSString *hash = [[self hash:url] substringToIndex:kTJImageCacheAuditHashPrefixLength];
         const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
         [[self _auditHashTree] addString:string];
     }];
@@ -368,6 +370,7 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 
 + (void)commitAuditCache {
     [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+        hashedURL = [hashedURL substringToIndex:kTJImageCacheAuditHashPrefixLength];
         const char *string = [hashedURL cStringUsingEncoding:NSUTF8StringEncoding];
         return [[self _auditHashTree] containsString:string];
     } completionBlock:^{
