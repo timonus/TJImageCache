@@ -435,8 +435,8 @@ const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
 	static dispatch_once_t token;
 	
 	dispatch_once(&token, ^{
-        if ([NSMapTable class] && [[NSMapTable class] respondsToSelector:@selector(weakToWeakObjectsMapTable)]) {
-            mapTable = [NSMapTable weakToWeakObjectsMapTable];
+        if ([NSMapTable class] && [[NSMapTable class] respondsToSelector:@selector(strongToWeakObjectsMapTable)]) {
+            mapTable = [NSMapTable strongToWeakObjectsMapTable];
         }
 	});
 	
