@@ -1,7 +1,7 @@
 # TJImageCache
 *Yet another Objective-C image cache.*
 
-This is the image cahce I use for [Wootie](http://j.mp/wootie), [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8), and other side projects of mine. It's designed for ease-of-use and performance. It uses ARC and should be backwards compatible back to iOS 4, though I haven't tested that and it is definitely backwards compatible with iOS 5.
+This is the image cache I use for [Wootie](http://j.mp/wootie), [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8), and other side projects of mine. It's designed for ease-of-use and performance. It uses ARC and should be backwards compatible back to iOS 4, though I haven't tested that and it is definitely backwards compatible with iOS 5.
 
 ## Fetching an Image
 
