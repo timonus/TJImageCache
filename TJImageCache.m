@@ -82,8 +82,8 @@
 
 - (BOOL)containsString:(const char *)string {
     BOOL containsString = NO;
-    if (strlen(string) == 0 && isEnd) {
-        containsString = YES;
+    if (strlen(string) == 0) {
+        containsString = isEnd;
     } else {
         NSNumber *key = @(string[0]);
         containsString = [childrenForCharacters[key] containsString:string + 1];
