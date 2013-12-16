@@ -31,3 +31,7 @@ This `depth` parameter is in several of the aforementioned methods, it's an enum
 - `TJImageCacheDepthDisk` should be used if you want TJImageCache to check memory, then the disk subsequently on a cache miss.
 
 - `TJImageCacheDepthInternet` tells TJImageCache to go the whole nine yards checking memory, the disk, then actually fetching the image from the [the tubes](http://en.wikipedia.org/wiki/Series_of_tubes) on cache misses. This is generally what you'll want to use once a user stops scrolling.
+
+# Other Open Source Projects
+
+Fun fact, TJImageCache plays quite nicely with [OLImageView](https://github.com/ondalabs/OLImageView) if you replace `IMAGE_CLASS` with `OLImage` in [TJImageCache.h](https://github.com/tijoinc/TJImageCache/blob/master/TJImageCache.h#L4).
