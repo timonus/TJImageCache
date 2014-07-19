@@ -86,7 +86,7 @@
         containsString = isEnd;
     } else {
         NSNumber *key = @(string[0]);
-        containsString = [childrenForCharacters[key] containsString:string + 1];
+        containsString = [(TJTreeNode *)childrenForCharacters[key] containsString:string + 1];
     }
     return containsString;
 }
