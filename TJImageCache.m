@@ -210,7 +210,7 @@
 							}
 						} else {
 							id delegatesForConnection = nil;
-                            if ([NSHashTable class] && [[NSHashTable class] respondsToSelector:@selector(weakObjectsHashTable)]) {
+                            if ([self _isHashTableAvailable]) {
                                 delegatesForConnection = [NSHashTable weakObjectsHashTable];
                             } else {
                                 delegatesForConnection = [[NSMutableSet alloc] init];
@@ -501,6 +501,18 @@ const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
     });
     
     return rootNode;
+}
+
++ (BOOL)_isHashTableAvailable
+{
+    static BOOL hashTableAvailable = NO;
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        hashTableAvailable = [NSHashTable class] && [[NSHashTable class] respondsToSelector:@selector(weakObjectsHashTable)];
+    });
+    
+    return hashTableAvailable;
 }
 
 @end
