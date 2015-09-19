@@ -1,6 +1,8 @@
 // TJImageCache
 // By Tim Johnsen
 
+// NOTE: To use in OS X, you should import AppKit and chanve IMAGE_CLASS to NSImageView
+#import <UIKit/UIKit.h>
 #define IMAGE_CLASS UIImage
 
 typedef enum {
