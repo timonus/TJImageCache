@@ -5,45 +5,6 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <sys/xattr.h>
 
-#pragma mark - TJImageCacheConnection
-
-// This class allows for backwards compatibility with NSURLConnection's sendAsynchronousRequest:queue:completionHandler: in iOS 4
-
-@interface TJImageCacheConnection : NSURLConnection
-
-+ (void)sendAsynchronousRequest:(NSURLRequest *)request queue:(NSOperationQueue *)queue completionHandler:(void (^)(NSURLResponse *, NSData *, NSError *))handler;
-
-@end
-
-@implementation TJImageCacheConnection
-
-+ (void)sendAsynchronousRequest:(NSURLRequest *)request queue:(NSOperationQueue *)queue completionHandler:(void (^)(NSURLResponse *, NSData *, NSError *))handler {
-    
-    static BOOL canSendAsync = NO;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        if ([[self superclass] respondsToSelector:@selector(sendAsynchronousRequest:queue:completionHandler:)]) {
-            canSendAsync = YES;
-        }
-    });
-    
-    if (canSendAsync) {
-        [super sendAsynchronousRequest:request queue:queue completionHandler:handler];
-    } else {
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
-            NSURLResponse *response = nil;
-            NSError *error = nil;
-            NSData *data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
-            
-            [queue addOperationWithBlock:^{
-                handler(response, data, error);
-            }];
-        });
-    }
-}
-
-@end
-
 #pragma mark - TJTree
 
 @interface TJTreeNode : NSObject {
@@ -204,7 +165,7 @@
                     
                     dispatch_async(dispatch_get_main_queue(), ^{
                         
-                        // Load from the interwebs using NSURLConnection delegate
+                        // Load from the interwebs
                         
                         if ([[TJImageCache _requestDelegates] objectForKey:hash]) {
                             if (delegate) {
@@ -224,8 +185,7 @@
                             
                             [[self _requestDelegates] setObject:delegatesForConnection forKey:hash];
                             
-                            [TJImageCacheConnection sendAsynchronousRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] queue:[self _networkQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
-                                
+                            [[[NSURLSession sharedSession] dataTaskWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
                                 // process image
                                 IMAGE_CLASS *image = [[IMAGE_CLASS alloc] initWithData:data];
                                 
@@ -267,7 +227,7 @@
                                         [[TJImageCache _requestDelegates] removeObjectForKey:hash];
                                     });
                                 }
-                            }];
+                            }] resume];
                         }
                     });
                 } else {
