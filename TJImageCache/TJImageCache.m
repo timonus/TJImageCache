@@ -309,8 +309,9 @@
 }
 
 + (void)dumpDiskCache {
-    [[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:nil] error:nil];
-    [self _createDirectory];
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+        return NO;
+    }];
 }
 
 + (void)dumpMemoryCache {
