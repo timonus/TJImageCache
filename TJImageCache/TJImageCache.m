@@ -355,11 +355,8 @@ const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
         [[NSFileManager defaultManager] createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
         
         // Don't back up
-        
-        const char* filePath = [path fileSystemRepresentation];
-        const char* attrName = "com.apple.MobileBackup";
-        u_int8_t attrValue = 1;
-        setxattr(filePath, attrName, &attrValue, sizeof(attrValue), 0, 0);
+        // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+        [[NSURL fileURLWithPath:path] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
     }
 }
 
