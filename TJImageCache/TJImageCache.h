@@ -6,9 +6,9 @@
 #define IMAGE_CLASS UIImage
 
 typedef enum {
-	TJImageCacheDepthMemory,
-	TJImageCacheDepthDisk,
-	TJImageCacheDepthInternet
+    TJImageCacheDepthMemory,
+    TJImageCacheDepthDisk,
+    TJImageCacheDepthInternet
 } TJImageCacheDepth;
 
 @protocol TJImageCacheDelegate <NSObject>
