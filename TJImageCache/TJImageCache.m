@@ -315,6 +315,7 @@
 
 + (void)dumpMemoryCache {
     [[TJImageCache _cache] removeAllObjects];
+    [[TJImageCache _mapTable] removeAllObjects];
 }
 
 #pragma mark Cache Auditing
