@@ -248,7 +248,14 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
             completionBlock();
         }
     }];
-    [auditOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
+    if ([auditOperation respondsToSelector:@selector(setQualityOfService:)]) {
+        [auditOperation setQualityOfService:NSQualityOfServiceBackground];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated"
+        [auditOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
+#pragma clang diagnostic pop
+    }
     [[TJImageCache _auditQueue] addOperation:auditOperation];
 }
 
@@ -465,3 +472,6 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 }
 
 @end
+
+#warning create dedicated session, override caching callback
+#warning allow client to specify cache path
