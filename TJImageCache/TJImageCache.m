@@ -5,60 +5,6 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <sys/xattr.h>
 
-#pragma mark - TJTree
-
-@interface TJTreeNode : NSObject {
-    NSMutableDictionary *childrenForCharacters;
-    BOOL isEnd;
-}
-
-- (void)addString:(const char *)hash;
-- (BOOL)containsString:(const char *)string;
-
-- (void)reset;
-
-@end
-
-@implementation TJTreeNode
-
-- (void)addString:(const char *)string {
-    if (strlen(string) == 0) {
-        isEnd = YES;
-    } else {
-        // Lazily generate our child mapping
-        if (!childrenForCharacters) {
-            childrenForCharacters = [[NSMutableDictionary alloc] init];
-        }
-        
-        // Lazily add the child node if needed
-        NSNumber *key = @(string[0]);
-        if (!childrenForCharacters[key]) {
-            childrenForCharacters[key] = [[TJTreeNode alloc] init];
-        }
-        
-        // Add string to child starting with next character
-        [childrenForCharacters[key] addString:string + 1];
-    }
-}
-
-- (BOOL)containsString:(const char *)string {
-    BOOL containsString = NO;
-    if (strlen(string) == 0) {
-        containsString = isEnd;
-    } else {
-        NSNumber *key = @(string[0]);
-        containsString = [(TJTreeNode *)childrenForCharacters[key] containsString:string + 1];
-    }
-    return containsString;
-}
-
-- (void)reset {
-    childrenForCharacters = nil;
-    isEnd = NO;
-}
-
-@end
-
 #pragma mark - TJImageCache
 
 @interface TJImageCache ()
@@ -73,8 +19,6 @@
 + (NSOperationQueue *)_networkQueue;
 + (NSOperationQueue *)_readQueue;
 + (NSOperationQueue *)_writeQueue;
-
-+ (TJTreeNode *)_auditHashTree;
 
 @end
 
@@ -324,28 +268,6 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
     }];
 }
 
-const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
-
-+ (void)addAuditImageURLToPreserve:(NSString *)url {
-    NSBlockOperation *addURLOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSString *hash = [[self hash:url] substringToIndex:kTJImageCacheAuditHashPrefixLength];
-        const char *string = [hash cStringUsingEncoding:NSUTF8StringEncoding];
-        [[self _auditHashTree] addString:string];
-    }];
-    [addURLOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
-    [[TJImageCache _auditQueue] addOperation:addURLOperation];
-}
-
-+ (void)commitAuditCache {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
-        hashedURL = [hashedURL substringToIndex:kTJImageCacheAuditHashPrefixLength];
-        const char *string = [hashedURL cStringUsingEncoding:NSUTF8StringEncoding];
-        return [[self _auditHashTree] containsString:string];
-    } completionBlock:^{
-        [[self _auditHashTree] reset];
-    }];
-}
-
 #pragma mark Private
 
 + (void)_createDirectory {
@@ -455,17 +377,6 @@ const NSUInteger kTJImageCacheAuditHashPrefixLength = 5;
     });
     
     return queue;
-}
-
-+ (TJTreeNode *)_auditHashTree {
-    static TJTreeNode *rootNode = nil;
-    static dispatch_once_t token;
-    
-    dispatch_once(&token, ^{
-        rootNode = [[TJTreeNode alloc] init];
-    });
-    
-    return rootNode;
 }
 
 + (BOOL)_isHashTableAvailable

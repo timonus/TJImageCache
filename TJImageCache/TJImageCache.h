@@ -40,7 +40,4 @@ typedef enum {
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date;
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *)date;
 
-+ (void)addAuditImageURLToPreserve:(NSString *)url;
-+ (void)commitAuditCache;
-
 @end
