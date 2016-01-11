@@ -18,7 +18,6 @@
 
 + (NSOperationQueue *)_networkQueue;
 + (NSOperationQueue *)_readQueue;
-+ (NSOperationQueue *)_writeQueue;
 
 @end
 
@@ -129,23 +128,20 @@
                             
                             [[self _requestDelegates] setObject:delegatesForConnection forKey:hash];
                             
-                            [[[NSURLSession sharedSession] dataTaskWithRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]] completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                                // process image
-                                IMAGE_CLASS *image = [[IMAGE_CLASS alloc] initWithData:data];
-                                
+                            [[[NSURLSession sharedSession] downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                                IMAGE_CLASS *image = nil;
+                                if (location) {
+                                    [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
+                                    image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+                                }
+
                                 if (image) {
-                                    
                                     // predraw image
                                     image = [self _predrawnImageFromImage:image];
                                     
                                     // Cache in Memory
                                     [[TJImageCache _cache] setObject:image forKey:hash];
                                     [[TJImageCache _mapTable] setObject:image forKey:hash];
-                                    
-                                    // Cache to Disk
-                                    [[TJImageCache _writeQueue] addOperationWithBlock:^{
-                                        [data writeToFile:path atomically:YES];
-                                    }];
                                     
                                     dispatch_async(dispatch_get_main_queue(), ^{
                                         // Inform Delegates
@@ -351,18 +347,6 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 
 
 + (NSOperationQueue *)_readQueue {
-    static NSOperationQueue *queue = nil;
-    static dispatch_once_t token;
-    
-    dispatch_once(&token, ^{
-        queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
-    });
-    
-    return queue;
-}
-
-+ (NSOperationQueue *)_writeQueue {
     static NSOperationQueue *queue = nil;
     static dispatch_once_t token;
     
