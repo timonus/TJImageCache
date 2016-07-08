@@ -236,11 +236,9 @@ static NSString *tj_imageCacheRootPath;
 #pragma unused(fileURL)
             fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
         }
-        if (completion) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                completion(fileSize);
-            });
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(fileSize);
+        });
     });
 }
 
