@@ -332,19 +332,6 @@ static NSString *tj_imageCacheRootPath;
     return mapTable;
 }
 
-+ (NSOperationQueue *)_networkQueue {
-    static NSOperationQueue *queue = nil;
-    static dispatch_once_t token;
-
-    dispatch_once(&token, ^{
-        queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
-    });
-
-    return queue;
-}
-
-
 + (NSOperationQueue *)_readQueue {
     static NSOperationQueue *queue = nil;
     static dispatch_once_t token;
