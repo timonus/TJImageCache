@@ -35,7 +35,8 @@ static NSString *tj_imageCacheRootPath;
 
 #pragma mark Hashing
 
-+ (NSString *)hash:(NSString *)string {
++ (NSString *)hash:(NSString *)string
+{
     const char* str = [string UTF8String];
     unsigned char result[CC_MD5_DIGEST_LENGTH];
     CC_MD5(str, (CC_LONG)strlen(str), result);
@@ -49,27 +50,30 @@ static NSString *tj_imageCacheRootPath;
 
 #pragma mark Image Fetching
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate {
-    return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
-}
-
-+ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth {
-    return [self imageAtURL:url depth:depth delegate:nil];
-}
-
-+ (IMAGE_CLASS *)imageAtURL:(NSString *)url {
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url
+{
     return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:nil];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate {
-    
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth
+{
+    return [self imageAtURL:url depth:depth delegate:nil];
+}
+
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate;
+{
+    return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
+}
+
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(const id<TJImageCacheDelegate>)delegate
+{
     if (!url) {
         return nil;
     }
     
     // Load from memory
     
-    NSString *hash = [TJImageCache hash:url];
+    NSString *const hash = [TJImageCache hash:url];
     __block IMAGE_CLASS *image = [[TJImageCache _cache] objectForKey:hash];
     
     // Load from other object potentially hanging on to reference
@@ -86,7 +90,7 @@ static NSString *tj_imageCacheRootPath;
     if (!image && depth != TJImageCacheDepthMemory) {
         
         [[TJImageCache _readQueue] addOperationWithBlock:^{
-            NSString *path = [TJImageCache _pathForURL:url];
+            NSString *const path = [TJImageCache _pathForURL:url];
             image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
             
             if (image) {
@@ -106,7 +110,7 @@ static NSString *tj_imageCacheRootPath;
             } else {
                 if (depth == TJImageCacheDepthInternet) {
                     
-                    // setup or add to delegate ball wrapped in locks...
+                    // setup or add to delegates...
                     
                     dispatch_async(dispatch_get_main_queue(), ^{
                         
@@ -139,7 +143,6 @@ static NSString *tj_imageCacheRootPath;
                             });
                             
                             [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                                IMAGE_CLASS *image = nil;
                                 if (location) {
                                     [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
                                     image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
@@ -194,7 +197,8 @@ static NSString *tj_imageCacheRootPath;
 
 #pragma mark Cache Checking
 
-+ (TJImageCacheDepth)depthForImageAtURL:(NSString *)url {
++ (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
+{
     
     if ([[TJImageCache _cache] objectForKey:[TJImageCache hash:url]]) {
         return TJImageCacheDepthMemory;
@@ -209,19 +213,21 @@ static NSString *tj_imageCacheRootPath;
 
 #pragma mark Cache Manipulation
 
-+ (void)removeImageAtURL:(NSString *)url {
++ (void)removeImageAtURL:(NSString *const)url
+{
     [[TJImageCache _cache] removeObjectForKey:[TJImageCache hash:url]];
     
     [[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:url] error:nil];
 }
 
-+ (void)dumpDiskCache {
++ (void)dumpDiskCache
+{
     [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
         return NO;
     }];
 }
 
-+ (void)getDiskCacheSize:(void (^)(NSUInteger diskCacheSize))completion
++ (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
         NSUInteger fileSize = 0;
@@ -238,14 +244,16 @@ static NSString *tj_imageCacheRootPath;
     });
 }
 
-+ (void)dumpMemoryCache {
++ (void)dumpMemoryCache
+{
     [[TJImageCache _cache] removeAllObjects];
     [[TJImageCache _mapTable] removeAllObjects];
 }
 
 #pragma mark Cache Auditing
 
-+ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock {
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
+{
     NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
         NSString *basePath = [TJImageCache _pathForURL:nil];
         NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:basePath error:nil];
@@ -270,25 +278,29 @@ static NSString *tj_imageCacheRootPath;
     [[TJImageCache _auditQueue] addOperation:auditOperation];
 }
 
-+ (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block {
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block
+{
     [self auditCacheWithBlock:block completionBlock:nil];
 }
 
-+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *)date {
-    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate){
++ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
+{
+    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
         return ([createdDate compare:date] != NSOrderedAscending);
     }];
 }
 
-+ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *)date {
-    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate){
++ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
+{
+    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
         return ([lastAccess compare:date] != NSOrderedAscending);
     }];
 }
 
 #pragma mark Private
 
-+ (NSString *)_pathForURL:(NSString *)url {
++ (NSString *)_pathForURL:(NSString *const)url
+{
     NSString *path = nil;
     if (url) {
         NSAssert(tj_imageCacheRootPath != nil, @"Attempting to access disk cache before %@ is configured!", NSStringFromClass([self class]));
@@ -297,7 +309,8 @@ static NSString *tj_imageCacheRootPath;
     return path;
 }
 
-+ (NSMutableDictionary *)_requestDelegates {
++ (NSMutableDictionary *)_requestDelegates
+{
     static NSMutableDictionary *requests = nil;
     static dispatch_once_t token;
     
@@ -308,7 +321,8 @@ static NSString *tj_imageCacheRootPath;
     return requests;
 }
 
-+ (NSCache *)_cache {
++ (NSCache *)_cache
+{
     static NSCache *cache = nil;
     static dispatch_once_t token;
     
@@ -319,7 +333,8 @@ static NSString *tj_imageCacheRootPath;
     return cache;
 }
 
-+ (id)_mapTable {
++ (id)_mapTable
+{
     static id mapTable = nil;
     static dispatch_once_t token;
     
@@ -332,7 +347,8 @@ static NSString *tj_imageCacheRootPath;
     return mapTable;
 }
 
-+ (NSOperationQueue *)_readQueue {
++ (NSOperationQueue *)_readQueue
+{
     static NSOperationQueue *queue = nil;
     static dispatch_once_t token;
     
@@ -344,7 +360,8 @@ static NSString *tj_imageCacheRootPath;
     return queue;
 }
 
-+ (NSOperationQueue *)_auditQueue {
++ (NSOperationQueue *)_auditQueue
+{
     static NSOperationQueue *queue = nil;
     static dispatch_once_t token;
     
