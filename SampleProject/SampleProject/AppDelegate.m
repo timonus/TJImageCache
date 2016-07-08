@@ -7,6 +7,7 @@
 //
 
 #import "AppDelegate.h"
+#import "TJImageCache.h"
 #import "ViewController.h"
 
 @interface AppDelegate ()
@@ -17,6 +18,8 @@
 
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    [TJImageCache configureWithDefaultRootPath];
+    
     self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     self.window.backgroundColor = [UIColor whiteColor];
     self.window.rootViewController = [[ViewController alloc] init];

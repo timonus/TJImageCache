@@ -7,7 +7,6 @@
 
 @interface TJImageCache ()
 
-+ (void)_createDirectory;
 + (NSString *)_pathForURL:(NSString *)url;
 
 + (NSMutableDictionary *)_requestDelegates;
@@ -19,7 +18,34 @@
 
 @end
 
+static NSString *tj_imageCacheRootPath;
+
 @implementation TJImageCache
+
+#pragma mark Configuration
+
++ (void)configureWithDefaultRootPath
+{
+    [self configureWithRootPath:[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"]];
+}
+
++ (void)configureWithRootPath:(NSString *const)rootPath
+{
+    NSAssert(tj_imageCacheRootPath == nil, @"You should not configure %@'s root path more than once.", NSStringFromClass([self class]));
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        tj_imageCacheRootPath = [rootPath copy];
+        
+        BOOL isDir = NO;
+        if (!([[NSFileManager defaultManager] fileExistsAtPath:tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+            
+            // Don't back up
+            // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+            [[NSURL fileURLWithPath:tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+        }
+    });
+}
 
 #pragma mark Hashing
 
@@ -54,11 +80,6 @@
     if (!url) {
         return nil;
     }
-    
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        [self _createDirectory];
-    });
     
     // Load from memory
     
@@ -281,27 +302,11 @@
 
 #pragma mark Private
 
-+ (void)_createDirectory {
-    BOOL isDir = NO;
-    NSString *path = [TJImageCache _pathForURL:nil];
-    if (!([[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDir] && isDir)) {
-        [[NSFileManager defaultManager] createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
-        
-        // Don't back up
-        // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-        [[NSURL fileURLWithPath:path] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
-    }
-}
-
 + (NSString *)_pathForURL:(NSString *)url {
-    static NSString *path = nil;
-    static dispatch_once_t token;
-    dispatch_once(&token, ^{
-        path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"];
-    });
-    
+    NSString *path = nil;
     if (url) {
-        return [path stringByAppendingPathComponent:[TJImageCache hash:url]];
+        NSAssert(tj_imageCacheRootPath != nil, @"Attempting to access disk cache before %@ is configured!", NSStringFromClass([self class]));
+        path = [tj_imageCacheRootPath stringByAppendingPathComponent:[TJImageCache hash:url]];
     }
     return path;
 }
@@ -391,5 +396,3 @@
 }
 
 @end
-
-#warning allow client to specify cache path

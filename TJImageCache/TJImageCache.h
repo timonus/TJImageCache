@@ -22,6 +22,9 @@ typedef NS_ENUM(NSUInteger, TJImageCacheDepth) {
 
 @interface TJImageCache : NSObject
 
++ (void)configureWithDefaultRootPath;
++ (void)configureWithRootPath:(NSString *const)rootPath;
+
 + (NSString *)hash:(NSString *)string;
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate;
