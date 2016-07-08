@@ -1,16 +1,17 @@
 # TJImageCache
-*Yet another Objective-C image cache.*
 
-This is the image cache I use for [Wootie](http://j.mp/wootie), [Avery](http://itunes.apple.com/us/app/avery/id442157573?mt=8), and other side projects of mine. It's designed for ease-of-use and performance. It uses ARC and should be backwards compatible back to iOS 4, though I haven't tested that and it is definitely backwards compatible with iOS 5.
+## Configuring
+
+You must configure the cache using either `+configureWithDefaultRootPath` or `+configureWithRootPath:` before attempting to load any images, I recommend doing so in `-application:didFinishLaunchingWithOptions:`. `+configureWithDefaultRootPath` is best if you have a standalone app, but `+configureWithRootPath:` is useful when building extensions.
 
 ## Fetching an Image
 
 To fetch an image, use one of the following methods.
 
-1. `+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth delegate:(id<TJImageCacheDelegate>)delegate`
-2. `+ (UIImage *)imageAtURL:(NSString *)url delegate:(id<TJImageCacheDelegate>)delegate`
-3. `+ (UIImage *)imageAtURL:(NSString *)url depth:(TJImageCacheDepth)depth`
-4. `+ (UIImage *)imageAtURL:(NSString *)url`
+1. `+imageAtURL:depth:delegate:`
+2. `+imageAtURL:delegate:`
+3. `+imageAtURL:depth:`
+4. `+imageAtURL:`
 
 In the event that the image is already in memory, each of these methods returns a `UIImage *`. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
 
@@ -19,8 +20,6 @@ In the event that the image is already in memory, each of these methods returns 
 To implement your own cache auditing policy, you can use `+auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock`. `block` is invoked for every image the cache knows of on low priority a background thread, returning `NO` from the block means the image will be deleted, returning `YES` means it will be preserved. The completion block is invoked when cache auditing is finished.
 
 There are two convenience methods you can use to remove images based off of age, `+auditCacheRemovingFilesOlderThanDate:` and `+auditCacheRemovingFilesLastAccessedBeforeDate:`. Using these will remove images older than a certain date or images that were last accessed before a certain date respectively.
-
-There's another simple way you can use to clean up the cache if you know all of the images you want to preserve. You can call `+addAuditImageURLToPreserve:` with each image URL you want to keep and then `+commitAuditCache` to clean the cache preserving all images you specified.
 
 ## About TJImageCacheDepth
 
