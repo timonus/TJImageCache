@@ -128,7 +128,15 @@
                             
                             [[self _requestDelegates] setObject:delegatesForConnection forKey:hash];
                             
-                            [[[NSURLSession sharedSession] downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                            static NSURLSession *session = nil;
+                            static dispatch_once_t onceToken;
+                            dispatch_once(&onceToken, ^{
+                                // We use an ephemeral session since TJImageCache does memory and disk caching.
+                                // Using NSURLCache would be redundant.
+                                session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+                            });
+                            
+                            [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                                 IMAGE_CLASS *image = nil;
                                 if (location) {
                                     [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
@@ -457,5 +465,4 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
 
 @end
 
-#warning create dedicated session, override caching callback
 #warning allow client to specify cache path
