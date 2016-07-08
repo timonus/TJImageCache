@@ -34,6 +34,7 @@ typedef enum {
 + (void)removeImageAtURL:(NSString *)url;
 + (void)dumpDiskCache;
 + (void)dumpMemoryCache;
++ (void)getDiskCacheSize:(void (^)(NSUInteger diskCacheSize))completion;
 
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock; // return YES to preserve the image, return NO to delete it
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block;

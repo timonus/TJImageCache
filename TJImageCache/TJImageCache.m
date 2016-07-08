@@ -222,6 +222,23 @@
     }];
 }
 
++ (void)getDiskCacheSize:(void (^)(NSUInteger diskCacheSize))completion
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+        NSUInteger fileSize = 0;
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _pathForURL:nil]];
+        for (NSURL *fileURL in enumerator) {
+#pragma unused(fileURL)
+            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
+        }
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(fileSize);
+            });
+        }
+    });
+}
+
 + (void)dumpMemoryCache {
     [[TJImageCache _cache] removeAllObjects];
     [[TJImageCache _mapTable] removeAllObjects];
