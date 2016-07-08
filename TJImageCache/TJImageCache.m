@@ -229,8 +229,6 @@
 
 #pragma mark Cache Auditing
 
-CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
-
 + (void)auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock {
     NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
         NSString *basePath = [TJImageCache _pathForURL:nil];
@@ -252,14 +250,7 @@ CGFloat const kTJImageCacheAuditThreadPriority = 0.1;
             completionBlock();
         }
     }];
-    if ([auditOperation respondsToSelector:@selector(setQualityOfService:)]) {
-        [auditOperation setQualityOfService:NSQualityOfServiceBackground];
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated"
-        [auditOperation setThreadPriority:kTJImageCacheAuditThreadPriority];
-#pragma clang diagnostic pop
-    }
+    [auditOperation setQualityOfService:NSQualityOfServiceBackground];
     [[TJImageCache _auditQueue] addOperation:auditOperation];
 }
 
