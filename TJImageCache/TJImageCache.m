@@ -5,8 +5,6 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <sys/xattr.h>
 
-#pragma mark - TJImageCache
-
 @interface TJImageCache ()
 
 + (void)_createDirectory;
