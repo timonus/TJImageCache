@@ -5,11 +5,11 @@
 #import <UIKit/UIKit.h>
 #define IMAGE_CLASS UIImage
 
-typedef enum {
+typedef NS_ENUM(NSUInteger, TJImageCacheDepth) {
     TJImageCacheDepthMemory,
     TJImageCacheDepthDisk,
     TJImageCacheDepthInternet
-} TJImageCacheDepth;
+};
 
 @protocol TJImageCacheDelegate <NSObject>
 
