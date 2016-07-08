@@ -3,20 +3,6 @@
 
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
-#import <sys/xattr.h>
-
-@interface TJImageCache ()
-
-+ (NSString *)_pathForURL:(NSString *)url;
-
-+ (NSMutableDictionary *)_requestDelegates;
-+ (NSCache *)_cache;
-+ (id)_mapTable;
-
-+ (NSOperationQueue *)_networkQueue;
-+ (NSOperationQueue *)_readQueue;
-
-@end
 
 static NSString *tj_imageCacheRootPath;
 
