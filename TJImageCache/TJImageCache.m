@@ -298,10 +298,9 @@ static NSString *tj_imageCacheRootPath;
 
 + (NSString *)_pathForURL:(NSString *const)url
 {
-    NSString *path = nil;
+    NSString *path = [self _rootPath];
     if (url) {
-        NSAssert(tj_imageCacheRootPath != nil, @"Attempting to access disk cache before %@ is configured!", NSStringFromClass([self class]));
-        path = [tj_imageCacheRootPath stringByAppendingPathComponent:[TJImageCache hash:url]];
+        path = [path stringByAppendingPathComponent:[TJImageCache hash:url]];
     }
     return path;
 }
