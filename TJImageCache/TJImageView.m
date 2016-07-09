@@ -4,6 +4,8 @@
 #import "TJImageView.h"
 #import "TJImageCache.h"
 
+const NSTimeInterval kTJImageViewDefaultImageAppearanceAnimationDuration = 0.25;
+
 @interface TJImageView () <TJImageCacheDelegate>
 
 @property (nonatomic, strong) UIImageView *imageView;
@@ -27,6 +29,7 @@
         self.imageView.contentMode = UIViewContentModeScaleAspectFill;
         self.imageView.opaque = YES;
         self.imageView.clipsToBounds = YES;
+        self.imageAppearanceAnimationDuration = kTJImageViewDefaultImageAppearanceAnimationDuration;
     }
     return self;
 }
@@ -49,7 +52,7 @@
 {
     if ([url isEqualToString:self.imageURLString] && !self.imageView.image) {
         self.imageView.image = image;
-        [UIView animateWithDuration:0.25 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+        [UIView animateWithDuration:self.imageAppearanceAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
             self.imageView.alpha = 1.0;
         } completion:nil];
     }
