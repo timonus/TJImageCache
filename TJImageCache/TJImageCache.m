@@ -4,7 +4,7 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
-static NSString *tj_imageCacheRootPath;
+static NSString *_tj_imageCacheRootPath;
 
 @implementation TJImageCache
 
@@ -17,18 +17,18 @@ static NSString *tj_imageCacheRootPath;
 
 + (void)configureWithRootPath:(NSString *const)rootPath
 {
-    NSAssert(tj_imageCacheRootPath == nil, @"You should not configure %@'s root path more than once.", NSStringFromClass([self class]));
+    NSAssert(_tj_imageCacheRootPath == nil, @"You should not configure %@'s root path more than once.", NSStringFromClass([self class]));
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        tj_imageCacheRootPath = [rootPath copy];
+        _tj_imageCacheRootPath = [rootPath copy];
         
         BOOL isDir = NO;
-        if (!([[NSFileManager defaultManager] fileExistsAtPath:tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+        if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
             
             // Don't back up
             // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-            [[NSURL fileURLWithPath:tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+            [[NSURL fileURLWithPath:_tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
         }
     });
 }
@@ -231,7 +231,7 @@ static NSString *tj_imageCacheRootPath;
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
         NSUInteger fileSize = 0;
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:tj_imageCacheRootPath];
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
         for (NSURL *fileURL in enumerator) {
 #pragma unused(fileURL)
             fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
@@ -253,11 +253,11 @@ static NSString *tj_imageCacheRootPath;
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
 {
     NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:tj_imageCacheRootPath error:nil];
+        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self _rootPath] error:nil];
 
         for (NSString *file in files) {
             @autoreleasepool {
-                NSString *path = [tj_imageCacheRootPath stringByAppendingPathComponent:file];
+                NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                 NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
@@ -295,6 +295,12 @@ static NSString *tj_imageCacheRootPath;
 }
 
 #pragma mark Private
+
++ (NSString *)_rootPath
+{
+    NSAssert(_tj_imageCacheRootPath != nil, @"You configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
+    return _tj_imageCacheRootPath;
+}
 
 + (NSString *)_pathForURL:(NSString *const)url
 {
