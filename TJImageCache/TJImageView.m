@@ -28,7 +28,7 @@ const NSTimeInterval kTJImageViewDefaultImageAppearanceAnimationDuration = 0.25;
         self.backgroundColor = [UIColor blackColor];
         self.imageView.contentMode = UIViewContentModeScaleAspectFill;
         self.imageView.opaque = YES;
-        self.imageView.clipsToBounds = YES;
+        self.clipsToBounds = YES;
         self.imageAppearanceAnimationDuration = kTJImageViewDefaultImageAppearanceAnimationDuration;
     }
     return self;
