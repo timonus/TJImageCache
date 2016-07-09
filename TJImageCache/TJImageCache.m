@@ -231,7 +231,7 @@ static NSString *tj_imageCacheRootPath;
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
         NSUInteger fileSize = 0;
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _pathForURL:nil]];
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:tj_imageCacheRootPath];
         for (NSURL *fileURL in enumerator) {
 #pragma unused(fileURL)
             fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
@@ -253,12 +253,11 @@ static NSString *tj_imageCacheRootPath;
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
 {
     NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSString *basePath = [TJImageCache _pathForURL:nil];
-        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:basePath error:nil];
+        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:tj_imageCacheRootPath error:nil];
 
         for (NSString *file in files) {
             @autoreleasepool {
-                NSString *path = [basePath stringByAppendingPathComponent:file];
+                NSString *path = [tj_imageCacheRootPath stringByAppendingPathComponent:file];
                 NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
