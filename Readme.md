@@ -13,11 +13,11 @@ To fetch an image, use one of the following methods.
 3. `+imageAtURL:depth:`
 4. `+imageAtURL:`
 
-In the event that the image is already in memory, each of these methods returns a `UIImage *`. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
+In the event that the image is already in memory, each of these methods returns an image. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
 
 ## Auditing
 
-To implement your own cache auditing policy, you can use `+auditCacheWithBlock:(BOOL (^)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock`. `block` is invoked for every image the cache knows of on low priority a background thread, returning `NO` from the block means the image will be deleted, returning `YES` means it will be preserved. The completion block is invoked when cache auditing is finished.
+To implement your own cache auditing policy, you can use `+auditCacheWithBlock:completionBlock:`. `block` is invoked for every image the cache knows of on low priority a background thread, returning `NO` from the block means the image will be deleted, returning `YES` means it will be preserved. The completion block is invoked when cache auditing is finished.
 
 There are two convenience methods you can use to remove images based off of age, `+auditCacheRemovingFilesOlderThanDate:` and `+auditCacheRemovingFilesLastAccessedBeforeDate:`. Using these will remove images older than a certain date or images that were last accessed before a certain date respectively.
 
