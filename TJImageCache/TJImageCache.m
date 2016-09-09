@@ -229,11 +229,11 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
 {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSUInteger fileSize = 0;
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
-        for (NSURL *fileURL in enumerator) {
-#pragma unused(fileURL)
+        for (NSString *filename in enumerator) {
+#pragma unused(filename)
             fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
         }
         dispatch_async(dispatch_get_main_queue(), ^{
