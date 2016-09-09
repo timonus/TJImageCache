@@ -252,27 +252,23 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
 {
-    NSBlockOperation *auditOperation = [NSBlockOperation blockOperationWithBlock:^{
-        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self _rootPath] error:nil];
-
-        for (NSString *file in files) {
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
+        for (NSString *file in enumerator) {
             @autoreleasepool {
-                NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
-                NSDictionary *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+                NSDictionary *attributes = [enumerator fileAttributes];
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
                 if (!block(file, lastAccess, createdDate)) {
+                    NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                     [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
                 }
             }
         }
-        
         if (completionBlock) {
             completionBlock();
         }
-    }];
-    [auditOperation setQualityOfService:NSQualityOfServiceBackground];
-    [[TJImageCache _auditQueue] addOperation:auditOperation];
+    });
 }
 
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block
@@ -350,19 +346,6 @@ static NSString *_tj_imageCacheRootPath;
 }
 
 + (NSOperationQueue *)_readQueue
-{
-    static NSOperationQueue *queue = nil;
-    static dispatch_once_t token;
-    
-    dispatch_once(&token, ^{
-        queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
-    });
-    
-    return queue;
-}
-
-+ (NSOperationQueue *)_auditQueue
 {
     static NSOperationQueue *queue = nil;
     static dispatch_once_t token;
