@@ -137,42 +137,44 @@ static NSString *_tj_imageCacheRootPath;
                                 session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                             });
                             
-                            [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                                if (location) {
-                                    [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
-                                    image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
-                                }
-
-                                if (image) {
-                                    // Cache in Memory
-                                    [[TJImageCache _cache] setObject:image forKey:hash];
-                                    [[TJImageCache _mapTable] setObject:image forKey:hash];
+                            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+                                [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                                    if (location) {
+                                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
+                                        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+                                    }
                                     
-                                    dispatch_async(dispatch_get_main_queue(), ^{
-                                        // Inform Delegates
-                                        for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-                                            if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-                                                [delegate didGetImage:image atURL:url];
-                                            }
-                                        }
+                                    if (image) {
+                                        // Cache in Memory
+                                        [[TJImageCache _cache] setObject:image forKey:hash];
+                                        [[TJImageCache _mapTable] setObject:image forKey:hash];
                                         
-                                        // Remove the connection
-                                        [[TJImageCache _requestDelegates] removeObjectForKey:hash];
-                                    });
-                                } else {
-                                    dispatch_async(dispatch_get_main_queue(), ^{
-                                        // Inform Delegates
-                                        for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-                                            if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-                                                [delegate didFailToGetImageAtURL:url];
+                                        dispatch_async(dispatch_get_main_queue(), ^{
+                                            // Inform Delegates
+                                            for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+                                                if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+                                                    [delegate didGetImage:image atURL:url];
+                                                }
                                             }
-                                        }
-                                        
-                                        // Remove the connection
-                                        [[TJImageCache _requestDelegates] removeObjectForKey:hash];
-                                    });
-                                }
-                            }] resume];
+                                            
+                                            // Remove the connection
+                                            [[TJImageCache _requestDelegates] removeObjectForKey:hash];
+                                        });
+                                    } else {
+                                        dispatch_async(dispatch_get_main_queue(), ^{
+                                            // Inform Delegates
+                                            for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+                                                if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+                                                    [delegate didFailToGetImageAtURL:url];
+                                                }
+                                            }
+                                            
+                                            // Remove the connection
+                                            [[TJImageCache _requestDelegates] removeObjectForKey:hash];
+                                        });
+                                    }
+                                }] resume];
+                            });
                         }
                     });
                 } else {
