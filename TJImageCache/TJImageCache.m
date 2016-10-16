@@ -118,16 +118,11 @@ static NSString *_tj_imageCacheRootPath;
                         
                         if ([[TJImageCache _requestDelegates] objectForKey:hash]) {
                             if (delegate) {
-                                id delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
+                                NSHashTable *delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
                                 [delegatesForConnection addObject:delegate];
                             }
                         } else {
-                            id delegatesForConnection = nil;
-                            if ([self _isHashTableAvailable]) {
-                                delegatesForConnection = [NSHashTable weakObjectsHashTable];
-                            } else {
-                                delegatesForConnection = [[NSMutableSet alloc] init];
-                            }
+                            NSHashTable *delegatesForConnection = [NSHashTable weakObjectsHashTable];
                             if (delegate) {
                                 [delegatesForConnection addObject:delegate];
                             }
@@ -307,7 +302,7 @@ static NSString *_tj_imageCacheRootPath;
     return path;
 }
 
-+ (NSMutableDictionary *)_requestDelegates
++ (NSMutableDictionary<NSString *, NSHashTable *> *)_requestDelegates
 {
     static NSMutableDictionary *requests = nil;
     static dispatch_once_t token;
@@ -337,9 +332,7 @@ static NSString *_tj_imageCacheRootPath;
     static dispatch_once_t token;
     
     dispatch_once(&token, ^{
-        if ([NSMapTable class] && [[NSMapTable class] respondsToSelector:@selector(strongToWeakObjectsMapTable)]) {
-            mapTable = [NSMapTable strongToWeakObjectsMapTable];
-        }
+        mapTable = [NSMapTable strongToWeakObjectsMapTable];
     });
     
     return mapTable;
@@ -356,18 +349,6 @@ static NSString *_tj_imageCacheRootPath;
     });
     
     return queue;
-}
-
-+ (BOOL)_isHashTableAvailable
-{
-    static BOOL hashTableAvailable = NO;
-    
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        hashTableAvailable = [NSHashTable class] && [[NSHashTable class] respondsToSelector:@selector(weakObjectsHashTable)];
-    });
-    
-    return hashTableAvailable;
 }
 
 @end
