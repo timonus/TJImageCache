@@ -74,21 +74,21 @@ static NSString *_tj_imageCacheRootPath;
     // Load from memory
     
     NSString *const hash = [TJImageCache hash:url];
-    __block IMAGE_CLASS *image = [[TJImageCache _cache] objectForKey:hash];
+    IMAGE_CLASS *inMemoryImage = [[TJImageCache _cache] objectForKey:hash];
     
     // Load from other object potentially hanging on to reference
     
-    if (!image) {
-        image = [[TJImageCache _mapTable] objectForKey:hash];
-        if (image) {
-            [[TJImageCache _cache] setObject:image forKey:hash];
+    if (!inMemoryImage) {
+        inMemoryImage = [[TJImageCache _mapTable] objectForKey:hash];
+        if (inMemoryImage) {
+            [[TJImageCache _cache] setObject:inMemoryImage forKey:hash];
         }
     }
     
     // Load from disk
     
-    if (!image && depth != TJImageCacheDepthMemory) {
-        
+    if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
+        __block IMAGE_CLASS *image = nil;
         [[TJImageCache _readQueue] addOperationWithBlock:^{
             NSString *const path = [TJImageCache _pathForURL:url];
             image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
@@ -187,7 +187,7 @@ static NSString *_tj_imageCacheRootPath;
         }];
     }
     
-    return image;
+    return inMemoryImage;
 }
 
 #pragma mark Cache Checking
