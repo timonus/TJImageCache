@@ -67,6 +67,13 @@ static NSString *_tj_imageCacheRootPath;
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(const id<TJImageCacheDelegate>)delegate
 {
+    return [self imageAtURL:url requestBlock:^NSURLRequest *{
+        return [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+    } depth:depth delegate:delegate];
+}
+
++ (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url requestBlock:(NSURLRequest *(^)(void))requestBlock depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
+{
     if (!url) {
         return nil;
     }
@@ -137,7 +144,7 @@ static NSString *_tj_imageCacheRootPath;
                                 session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                             });
                             
-                            [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                            [[session downloadTaskWithRequest:requestBlock() completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                                 if (location) {
                                     [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
                                     image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
