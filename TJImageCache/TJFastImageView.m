@@ -170,9 +170,6 @@
             UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
             [[UIColor lightGrayColor] setFill];
             [clippingPath fill];
-            [[UIColor lightGrayColor] setStroke];
-            CGContextSetLineWidth(context, MIN(1.0 / [[UIScreen mainScreen] scale], 0.5));
-            [clippingPath stroke];
         };
         
         if ([UIGraphicsImageRenderer class]) {
