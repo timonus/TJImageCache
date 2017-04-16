@@ -92,7 +92,7 @@
     self.image = [[self class] placeholderImageWithCornerRadius:self.imageCornerRadius];
     
     UIImage *const image = self.loadedImage;
-    if (self.loadedImage) {
+    if (image) {
         NSString *const imageURLString = self.imageURLString;
         const CGSize size = self.bounds.size;
         const CGFloat cornerRadius = self.imageCornerRadius;
