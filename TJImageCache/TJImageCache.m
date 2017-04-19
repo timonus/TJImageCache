@@ -79,7 +79,9 @@ static NSString *_tj_imageCacheRootPath;
     // Load from other object potentially hanging on to reference
     
     if (!inMemoryImage) {
-        inMemoryImage = [[TJImageCache _mapTable] objectForKey:hash];
+        @synchronized ([self _mapTable]) {
+            inMemoryImage = [[TJImageCache _mapTable] objectForKey:hash];
+        }
         if (inMemoryImage) {
             [[TJImageCache _cache] setObject:inMemoryImage forKey:hash];
         }
@@ -99,7 +101,9 @@ static NSString *_tj_imageCacheRootPath;
                 
                 // add to in-memory cache
                 [[TJImageCache _cache] setObject:image forKey:hash];
-                [[TJImageCache _mapTable] setObject:image forKey:hash];
+                @synchronized ([self _mapTable]) {
+                    [[TJImageCache _mapTable] setObject:image forKey:hash];
+                }
                 
                 // tell delegate about success
                 if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
@@ -147,7 +151,9 @@ static NSString *_tj_imageCacheRootPath;
                                     if (image) {
                                         // Cache in Memory
                                         [[TJImageCache _cache] setObject:image forKey:hash];
-                                        [[TJImageCache _mapTable] setObject:image forKey:hash];
+                                        @synchronized ([self _mapTable]) {
+                                            [[TJImageCache _mapTable] setObject:image forKey:hash];
+                                        }
                                         
                                         dispatch_async(dispatch_get_main_queue(), ^{
                                             // Inform Delegates
@@ -242,7 +248,9 @@ static NSString *_tj_imageCacheRootPath;
 + (void)dumpMemoryCache
 {
     [[TJImageCache _cache] removeAllObjects];
-    [[TJImageCache _mapTable] removeAllObjects];
+    @synchronized ([self _mapTable]) {
+        [[TJImageCache _mapTable] removeAllObjects];
+    }
 }
 
 #pragma mark Cache Auditing
@@ -256,7 +264,11 @@ static NSString *_tj_imageCacheRootPath;
                 NSDictionary *attributes = [enumerator fileAttributes];
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
-                if (!block(file, lastAccess, createdDate)) {
+                BOOL isInUse = NO;
+                @synchronized ([self _mapTable]) {
+                    isInUse = [[self _mapTable] objectForKey:file];
+                }
+                if (!isInUse && !block(file, lastAccess, createdDate)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                     [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
                 }
