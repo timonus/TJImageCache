@@ -36,7 +36,7 @@ return self;\
 \
 - (void)setImageURLString:(NSString *)imageURLString\
 {\
-if (imageURLString != _imageURLString) {\
+if (imageURLString != _imageURLString && ![imageURLString isEqual:_imageURLString]) {\
 _imageURLString = [imageURLString copy];\
 self.loadedImage = [TJImageCache imageAtURL:self.imageURLString delegate:self];\
 }\
