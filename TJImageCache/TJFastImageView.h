@@ -7,10 +7,10 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "TJFastImage.h"
 
 @interface TJFastImageView : UIImageView
 
-@property (nonatomic, copy) NSString *imageURLString;
-@property (nonatomic, assign) CGFloat imageCornerRadius;
+TJ_FAST_IMAGE_INTERFACE
 
 @end
