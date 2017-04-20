@@ -137,17 +137,7 @@
             [clippingPath stroke];
         };
         
-        if ([UIGraphicsImageRenderer class]) {
-            UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
-            drawnImage = [renderer imageWithActions:^(UIGraphicsImageRendererContext *rendererContext) {
-                drawBlock(rendererContext.CGContext);
-            }];
-        } else {
-            UIGraphicsBeginImageContextWithOptions(size, NO, scale);
-            drawBlock(UIGraphicsGetCurrentContext());
-            drawnImage = UIGraphicsGetImageFromCurrentImageContext();
-            UIGraphicsEndImageContext();
-        }
+        drawnImage = [self drawImageWithBlock:drawBlock size:size opaque:cornerRadius == 0.0];
     }
     return drawnImage;
 }
@@ -172,21 +162,28 @@
             [clippingPath fill];
         };
         
-        if ([UIGraphicsImageRenderer class]) {
-            UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
-            image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
-                drawBlock(rendererContext.CGContext);
-            }];
-        } else {
-            UIGraphicsBeginImageContextWithOptions(size, NO, [UIScreen mainScreen].scale);
-            drawBlock(UIGraphicsGetCurrentContext());
-            image = UIGraphicsGetImageFromCurrentImageContext();
-            UIGraphicsEndImageContext();
-        }
+        image = [self drawImageWithBlock:drawBlock size:size opaque:cornerRadius == 0.0];
         image = [image resizableImageWithCapInsets:(UIEdgeInsets){cornerRadius, cornerRadius, cornerRadius, cornerRadius}];
         [imagesForCornerRadii setObject:image forKey:@(cornerRadius)];
     }
     
+    return image;
+}
+
++ (UIImage *)drawImageWithBlock:(const void (^)(CGContextRef context))drawBlock size:(const CGSize)size opaque:(const BOOL)opaque
+{
+    UIImage *image = nil;
+    if ([UIGraphicsImageRenderer class]) {
+        UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+        image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+            drawBlock(rendererContext.CGContext);
+        }];
+    } else {
+        UIGraphicsBeginImageContextWithOptions(size, NO, [UIScreen mainScreen].scale);
+        drawBlock(UIGraphicsGetCurrentContext());
+        image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+    }
     return image;
 }
 
