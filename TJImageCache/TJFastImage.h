@@ -20,14 +20,6 @@
 @property (nonatomic, assign) BOOL needsUpdateImage;
 
 #define TJ_FAST_IMAGE_DEFINITION(TJ_FAST_IMAGE_PROPERTY) \
-- (instancetype)initWithFrame:(CGRect)frame\
-{\
-if (self = [super initWithFrame:frame]) {\
-[super setBackgroundColor:[UIColor clearColor]];\
-}\
-\
-return self;\
-}\
 \
 - (void)setBackgroundColor:(UIColor *)backgroundColor\
 {\

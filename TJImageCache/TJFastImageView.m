@@ -17,6 +17,14 @@ TJ_FAST_IMAGE_PRIVATE_INTERFACE
 
 @implementation TJFastImageView
 
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    if (self = [super initWithFrame:frame]) {
+        [super setBackgroundColor:[UIColor clearColor]];
+    }
+    return self;
+}
+
 TJ_FAST_IMAGE_DEFINITION(image)
 
 @end
