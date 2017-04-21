@@ -266,7 +266,7 @@ static NSString *_tj_imageCacheRootPath;
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
                 BOOL isInUse = NO;
                 @synchronized ([self _mapTable]) {
-                    isInUse = [[self _mapTable] objectForKey:file];
+                    isInUse = [[self _mapTable] objectForKey:file] != nil;
                 }
                 if (!isInUse && !block(file, lastAccess, createdDate)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
