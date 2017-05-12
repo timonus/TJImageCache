@@ -9,6 +9,7 @@
 #import "TJFastImage.h"
 
 // Must be thread safe
+UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque);
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque)
 {
     UIImage *image = nil;
