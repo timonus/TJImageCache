@@ -289,7 +289,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (NSString *)_rootPath
 {
-    NSAssert(_tj_imageCacheRootPath != nil, @"You configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
+    NSAssert(_tj_imageCacheRootPath != nil, @"You should configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
     return _tj_imageCacheRootPath;
 }
 
