@@ -294,7 +294,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)_mapTableWithBlock:(void (^)(NSMapTable *mapTable))block
 {
-    static id mapTable = nil;
+    static NSMapTable *mapTable = nil;
     static dispatch_once_t token;
     static dispatch_queue_t queue = nil;
     
