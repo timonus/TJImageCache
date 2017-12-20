@@ -100,10 +100,7 @@ static NSString *_tj_imageCacheRootPath;
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
                 
                 // add to in-memory cache
-                [[TJImageCache _cache] setObject:image forKey:hash];
-                @synchronized ([self _mapTable]) {
-                    [[TJImageCache _mapTable] setObject:image forKey:hash];
-                }
+                [self _setInMemoryImage:image forKey:hash];
                 
                 // tell delegate about success
                 if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
@@ -150,10 +147,7 @@ static NSString *_tj_imageCacheRootPath;
                                     
                                     if (image) {
                                         // Cache in Memory
-                                        [[TJImageCache _cache] setObject:image forKey:hash];
-                                        @synchronized ([self _mapTable]) {
-                                            [[TJImageCache _mapTable] setObject:image forKey:hash];
-                                        }
+                                        [self _setInMemoryImage:image forKey:hash];
                                         
                                         dispatch_async(dispatch_get_main_queue(), ^{
                                             // Inform Delegates
@@ -363,6 +357,14 @@ static NSString *_tj_imageCacheRootPath;
     });
     
     return queue;
+}
+
++ (void)_setInMemoryImage:(UIImage *const)image forKey:(NSString *const)key
+{
+    [[TJImageCache _cache] setObject:image forKey:key];
+    @synchronized ([self _mapTable]) {
+        [[TJImageCache _mapTable] setObject:image forKey:key];
+    }
 }
 
 @end
