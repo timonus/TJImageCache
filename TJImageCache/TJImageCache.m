@@ -106,7 +106,7 @@ static NSString *_tj_imageCacheRootPath;
     
     if (loadAsynchronously) {
         [[self _readQueue] addOperationWithBlock:^{
-            NSString *const path = [TJImageCache _pathForURL:url];
+            NSString *const path = [TJImageCache _pathForHash:hash];
             __block UIImage *image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
 
             if (image) {
@@ -167,12 +167,13 @@ static NSString *_tj_imageCacheRootPath;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
 {
+    NSString *const hash = [TJImageCache hash:url];
     
-    if ([[TJImageCache _cache] objectForKey:[TJImageCache hash:url]]) {
+    if ([[TJImageCache _cache] objectForKey:hash]) {
         return TJImageCacheDepthMemory;
     }
     
-    if ([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForURL:url]]) {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForHash:hash]]) {
         return TJImageCacheDepthDisk;
     }
     
@@ -188,7 +189,7 @@ static NSString *_tj_imageCacheRootPath;
     [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
     }];
-    [[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForURL:url] error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForHash:hash] error:nil];
 }
 
 + (void)dumpDiskCache
@@ -275,11 +276,11 @@ static NSString *_tj_imageCacheRootPath;
     return _tj_imageCacheRootPath;
 }
 
-+ (NSString *)_pathForURL:(NSString *const)url
++ (NSString *)_pathForHash:(NSString *const)hash
 {
     NSString *path = [self _rootPath];
-    if (url) {
-        path = [path stringByAppendingPathComponent:[TJImageCache hash:url]];
+    if (hash) {
+        path = [path stringByAppendingPathComponent:hash];
     }
     return path;
 }
