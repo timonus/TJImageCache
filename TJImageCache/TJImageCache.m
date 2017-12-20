@@ -270,11 +270,6 @@ static NSString *_tj_imageCacheRootPath;
 //    return inMemoryImage;
 //}
 
-- (void)_messageImageFetchResultToDelegate:(IMAGE_CLASS *const)image forHash:(NSString *const)hash
-{
-    
-}
-
 #pragma mark Cache Checking
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
