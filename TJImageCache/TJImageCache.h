@@ -15,9 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol TJImageCacheDelegate <NSObject>
 
+- (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url;
+
 @optional
 
-- (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url;
 - (void)didFailToGetImageAtURL:(NSString *)url;
 
 @end

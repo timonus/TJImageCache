@@ -87,109 +87,192 @@ static NSString *_tj_imageCacheRootPath;
         }
     }
     
-    // Load from disk
+    // Load from disk or network
     
+    __block BOOL loadAsynchronously = NO;
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
-        __block IMAGE_CLASS *image = nil;
-        [[TJImageCache _readQueue] addOperationWithBlock:^{
+        [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
+            NSHashTable *delegatesForRequest = [requestDelegates objectForKey:hash];
+            if (!delegatesForRequest) {
+                delegatesForRequest = [NSHashTable weakObjectsHashTable];
+                [requestDelegates setObject:delegatesForRequest forKey:hash];
+                loadAsynchronously = YES;
+            }
+            if (delegate) {
+                [delegatesForRequest addObject:delegate];
+            }
+        }];
+    }
+    
+    if (loadAsynchronously) {
+        [[self _readQueue] addOperationWithBlock:^{
             NSString *const path = [TJImageCache _pathForURL:url];
-            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
-            
+            __block UIImage *image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+
             if (image) {
-                // add to in-memory cache
-                [self _setInMemoryImage:image forKey:hash];
-                
                 // tell delegate about success
-                if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        [delegate didGetImage:image atURL:url];
-                    });
-                }
-                
+                [self _tryCacheInMemoryAndCallDelegatesForImage:image url:url hash:hash];
+
                 // update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
-            } else {
-                if (depth == TJImageCacheDepthInternet) {
-                    
-                    // setup or add to delegates...
-                    
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        
-                        // Load from the interwebs
-                        
-                        if ([[TJImageCache _requestDelegates] objectForKey:hash]) {
-                            if (delegate) {
-                                NSHashTable *delegatesForConnection = [[TJImageCache _requestDelegates] objectForKey:hash];
-                                [delegatesForConnection addObject:delegate];
-                            }
-                        } else {
-                            NSHashTable *delegatesForConnection = [NSHashTable weakObjectsHashTable];
-                            if (delegate) {
-                                [delegatesForConnection addObject:delegate];
-                            }
-                            
-                            [[self _requestDelegates] setObject:delegatesForConnection forKey:hash];
-                            
-                            static NSURLSession *session = nil;
-                            static dispatch_once_t onceToken;
-                            dispatch_once(&onceToken, ^{
-                                // We use an ephemeral session since TJImageCache does memory and disk caching.
-                                // Using NSURLCache would be redundant.
-                                session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
-                            });
-                            
-                            dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-                                [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                                    if (location) {
-                                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
-                                        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
-                                    }
-                                    
-                                    if (image) {
-                                        // Cache in Memory
-                                        [self _setInMemoryImage:image forKey:hash];
-                                        
-                                        dispatch_async(dispatch_get_main_queue(), ^{
-                                            // Inform Delegates
-                                            for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-                                                if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
-                                                    [delegate didGetImage:image atURL:url];
-                                                }
-                                            }
-                                            
-                                            // Remove the connection
-                                            [[TJImageCache _requestDelegates] removeObjectForKey:hash];
-                                        });
-                                    } else {
-                                        dispatch_async(dispatch_get_main_queue(), ^{
-                                            // Inform Delegates
-                                            for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
-                                                if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-                                                    [delegate didFailToGetImageAtURL:url];
-                                                }
-                                            }
-                                            
-                                            // Remove the connection
-                                            [[TJImageCache _requestDelegates] removeObjectForKey:hash];
-                                        });
-                                    }
-                                }] resume];
-                            });
-                        }
-                    });
-                } else {
-                    // tell delegate about failure
-                    if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            [delegate didFailToGetImageAtURL:url];
-                        });
+            } else if (depth == TJImageCacheDepthInternet) {
+                static NSURLSession *session = nil;
+                static dispatch_once_t onceToken;
+                dispatch_once(&onceToken, ^{
+                    // We use an ephemeral session since TJImageCache does memory and disk caching.
+                    // Using NSURLCache would be redundant.
+                    session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+                });
+                
+                [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                    if (location) {
+                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
+                        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
                     }
-                }
+                    [self _tryCacheInMemoryAndCallDelegatesForImage:image url:url hash:hash];
+                }] resume];
+            } else {
+                [self _tryCacheInMemoryAndCallDelegatesForImage:nil url:url hash:hash];
             }
         }];
     }
     
     return inMemoryImage;
+}
+
++ (void)_tryCacheInMemoryAndCallDelegatesForImage:(UIImage *const)image url:(NSString *const)url hash:(NSString *)hash
+{
+    if (image) {
+        [[TJImageCache _cache] setObject:image forKey:hash];
+        @synchronized ([self _mapTable]) {
+            [[TJImageCache _mapTable] setObject:image forKey:hash];
+        }
+    }
+    [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
+        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:hash];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
+                if (image) {
+                    [delegate didGetImage:image atURL:url];
+                } else if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+                    [delegate didFailToGetImageAtURL:url];
+                }
+            }
+        });
+        [requestDelegates removeObjectForKey:hash];
+    }];
+}
+
+//+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(const id<TJImageCacheDelegate>)delegate
+//{
+//    if (!url) {
+//        return nil;
+//    }
+//
+//    // Load from memory
+//
+//    NSString *const hash = [TJImageCache hash:url];
+//    IMAGE_CLASS *inMemoryImage = [[TJImageCache _cache] objectForKey:hash];
+//
+//    // Load from other object potentially hanging on to reference
+//
+//    if (!inMemoryImage) {
+//        @synchronized ([self _mapTable]) {
+//            inMemoryImage = [[TJImageCache _mapTable] objectForKey:hash];
+//        }
+//        if (inMemoryImage) {
+//            [[TJImageCache _cache] setObject:inMemoryImage forKey:hash];
+//        }
+//    }
+//
+//    // Load from disk
+//
+//    if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
+//        __block IMAGE_CLASS *image = nil;
+//        [[TJImageCache _readQueue] addOperationWithBlock:^{
+//            NSString *const path = [TJImageCache _pathForURL:url];
+//            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+//
+//            if (image) {
+//                // add to in-memory cache
+//                [self _setInMemoryImage:image forKey:hash];
+//
+//                // tell delegate about success
+//                if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+//                    dispatch_async(dispatch_get_main_queue(), ^{
+//                        [delegate didGetImage:image atURL:url];
+//                    });
+//                }
+//
+//                // update last access date
+//                [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
+//            } else {
+//                if (depth == TJImageCacheDepthInternet) {
+//
+//
+//                    if (loadFromNetwork) {
+//                        static NSURLSession *session = nil;
+//                        static dispatch_once_t onceToken;
+//                        dispatch_once(&onceToken, ^{
+//                            // We use an ephemeral session since TJImageCache does memory and disk caching.
+//                            // Using NSURLCache would be redundant.
+//                            session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+//                        });
+//
+//                        [[session downloadTaskWithURL:[NSURL URLWithString:url] completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+//                            if (location) {
+//                                [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
+//                                image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+//                            }
+//
+//                            if (image) {
+//                                // Cache in Memory
+//                                [self _setInMemoryImage:image forKey:hash];
+//
+//                                dispatch_async(dispatch_get_main_queue(), ^{
+//                                    // Inform Delegates
+//                                    for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+//                                        if ([delegate respondsToSelector:@selector(didGetImage:atURL:)]) {
+//                                            [delegate didGetImage:image atURL:url];
+//                                        }
+//                                    }
+//
+//                                    // Remove the connection
+//                                    [[TJImageCache _requestDelegates] removeObjectForKey:hash];
+//                                });
+//                            } else {
+//                                dispatch_async(dispatch_get_main_queue(), ^{
+//                                    // Inform Delegates
+//                                    for (id delegate in [[self _requestDelegates] objectForKey:hash]) {
+//                                        if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+//                                            [delegate didFailToGetImageAtURL:url];
+//                                        }
+//                                    }
+//
+//                                    // Remove the connection
+//                                    [[TJImageCache _requestDelegates] removeObjectForKey:hash];
+//                                });
+//                            }
+//                        }] resume];
+//                    }
+//                } else {
+//                    // tell delegate about failure
+//                    if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+//                        dispatch_async(dispatch_get_main_queue(), ^{
+//                            [delegate didFailToGetImageAtURL:url];
+//                        });
+//                    }
+//                }
+//            }
+//        }];
+//    }
+//
+//    return inMemoryImage;
+//}
+
+- (void)_messageImageFetchResultToDelegate:(IMAGE_CLASS *const)image forHash:(NSString *const)hash
+{
+    
 }
 
 #pragma mark Cache Checking
@@ -310,16 +393,20 @@ static NSString *_tj_imageCacheRootPath;
     return path;
 }
 
-+ (NSMutableDictionary<NSString *, NSHashTable *> *)_requestDelegates
++ (void)_requestDelegatesWithBlock:(void (^)(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates))block
 {
-    static NSMutableDictionary *requests = nil;
+    static NSMutableDictionary<NSString *, NSHashTable *> *requests = nil;
     static dispatch_once_t token;
+    static dispatch_queue_t queue = nil;
     
     dispatch_once(&token, ^{
         requests = [[NSMutableDictionary alloc] init];
+        queue = dispatch_queue_create("TJImageCache delegate queue", DISPATCH_QUEUE_SERIAL);
     });
-    
-    return requests;
+
+    dispatch_sync(queue, ^{
+        block(requests);
+    });
 }
 
 + (NSCache *)_cache
@@ -357,14 +444,6 @@ static NSString *_tj_imageCacheRootPath;
     });
     
     return queue;
-}
-
-+ (void)_setInMemoryImage:(UIImage *const)image forKey:(NSString *const)key
-{
-    [[TJImageCache _cache] setObject:image forKey:key];
-    @synchronized ([self _mapTable]) {
-        [[TJImageCache _mapTable] setObject:image forKey:key];
-    }
 }
 
 @end
