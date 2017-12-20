@@ -74,8 +74,8 @@ static NSString *_tj_imageCacheRootPath;
     
     // Attempt load from cache.
     
-    NSString *const hash = [TJImageCache hash:urlString];
-    __block IMAGE_CLASS *inMemoryImage = [[TJImageCache _cache] objectForKey:hash];
+    NSString *const hash = [self hash:urlString];
+    __block IMAGE_CLASS *inMemoryImage = [[self _cache] objectForKey:hash];
     
     // Attempt load from map table.
     
@@ -85,7 +85,7 @@ static NSString *_tj_imageCacheRootPath;
         }];
         if (inMemoryImage) {
             // Propagate back into our cache.
-            [[TJImageCache _cache] setObject:inMemoryImage forKey:hash];
+            [[self _cache] setObject:inMemoryImage forKey:hash];
         }
     }
     
@@ -113,7 +113,7 @@ static NSString *_tj_imageCacheRootPath;
             readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL);
         });
         dispatch_async(readQueue, ^{
-            NSString *const path = [TJImageCache _pathForHash:hash];
+            NSString *const path = [self _pathForHash:hash];
             __block IMAGE_CLASS *image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
 
             if (image) {
@@ -153,14 +153,14 @@ static NSString *_tj_imageCacheRootPath;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
 {
-    NSString *const hash = [TJImageCache hash:url];
+    NSString *const hash = [self hash:url];
     
-    if ([[TJImageCache _cache] objectForKey:hash]) {
+    if ([[self _cache] objectForKey:hash]) {
         return TJImageCacheDepthMemory;
     }
     
     __block BOOL isImageInMapTable = NO;
-    [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
+    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         isImageInMapTable = [mapTable objectForKey:hash] != nil;
     }];
     
@@ -168,7 +168,7 @@ static NSString *_tj_imageCacheRootPath;
         return TJImageCacheDepthMemory;
     }
     
-    if ([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForHash:hash]]) {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:[self _pathForHash:hash]]) {
         return TJImageCacheDepthDisk;
     }
     
@@ -179,18 +179,18 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)removeImageAtURL:(NSString *const)url
 {
-    NSString *const hash = [TJImageCache hash:url];
-    [[TJImageCache _cache] removeObjectForKey:hash];
-    [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
+    NSString *const hash = [self hash:url];
+    [[self _cache] removeObjectForKey:hash];
+    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
     }];
-    [[NSFileManager defaultManager] removeItemAtPath:[TJImageCache _pathForHash:hash] error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:[self _pathForHash:hash] error:nil];
 }
 
 + (void)dumpMemoryCache
 {
-    [[TJImageCache _cache] removeAllObjects];
-    [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
+    [[self _cache] removeAllObjects];
+    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeAllObjects];
     }];
 }
@@ -236,14 +236,14 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
 {
-    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
         return ([createdDate compare:date] != NSOrderedAscending);
     }];
 }
 
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
 {
-    [TJImageCache auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
         return ([lastAccess compare:date] != NSOrderedAscending);
     }];
 }
@@ -327,8 +327,8 @@ static NSString *_tj_imageCacheRootPath;
 + (void)_tryUpdateMemoryCacheAndCallDelegatesForImage:(IMAGE_CLASS *const)image url:(NSString *const)url hash:(NSString *)hash
 {
     if (image) {
-        [[TJImageCache _cache] setObject:image forKey:hash];
-        [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
+        [[self _cache] setObject:image forKey:hash];
+        [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             [mapTable setObject:image forKey:hash];
         }];
     }
