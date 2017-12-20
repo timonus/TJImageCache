@@ -8,7 +8,7 @@ static NSString *_tj_imageCacheRootPath;
 
 @implementation TJImageCache
 
-#pragma mark Configuration
+#pragma mark - Configuration
 
 + (void)configureWithDefaultRootPath
 {
@@ -33,7 +33,7 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
-#pragma mark Hashing
+#pragma mark - Hashing
 
 + (NSString *)hash:(NSString *)string
 {
@@ -48,7 +48,7 @@ static NSString *_tj_imageCacheRootPath;
     return ret;
 }
 
-#pragma mark Image Fetching
+#pragma mark - Image Fetching
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)url
 {
@@ -149,7 +149,7 @@ static NSString *_tj_imageCacheRootPath;
     return inMemoryImage;
 }
 
-#pragma mark Cache Checking
+#pragma mark - Cache Checking
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
 {
@@ -175,7 +175,22 @@ static NSString *_tj_imageCacheRootPath;
     return TJImageCacheDepthInternet;
 }
 
-#pragma mark Cache Manipulation
++ (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
+{
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSUInteger fileSize = 0;
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
+        for (NSString *filename in enumerator) {
+#pragma unused(filename)
+            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(fileSize);
+        });
+    });
+}
+
+#pragma mark - Cache Manipulation
 
 + (void)removeImageAtURL:(NSString *const)url
 {
@@ -202,7 +217,7 @@ static NSString *_tj_imageCacheRootPath;
     }];
 }
 
-#pragma mark Cache Auditing
+#pragma mark - Cache Auditing
 
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
 {
@@ -248,22 +263,7 @@ static NSString *_tj_imageCacheRootPath;
     }];
 }
 
-+ (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
-{
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSUInteger fileSize = 0;
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
-        for (NSString *filename in enumerator) {
-#pragma unused(filename)
-            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(fileSize);
-        });
-    });
-}
-
-#pragma mark Private
+#pragma mark - Private
 
 + (NSString *)_rootPath
 {
