@@ -173,6 +173,15 @@ static NSString *_tj_imageCacheRootPath;
         return TJImageCacheDepthMemory;
     }
     
+    __block BOOL isImageInMapTable = NO;
+    [TJImageCache _mapTableWithBlock:^(NSMapTable *mapTable) {
+        isImageInMapTable = [mapTable objectForKey:hash] != nil;
+    }];
+    
+    if (isImageInMapTable) {
+        return TJImageCacheDepthMemory;
+    }
+    
     if ([[NSFileManager defaultManager] fileExistsAtPath:[TJImageCache _pathForHash:hash]]) {
         return TJImageCacheDepthDisk;
     }
