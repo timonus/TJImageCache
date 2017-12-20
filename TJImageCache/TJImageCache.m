@@ -60,7 +60,7 @@ static NSString *_tj_imageCacheRootPath;
     return [self imageAtURL:url depth:depth delegate:nil];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate;
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate
 {
     return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
 }
