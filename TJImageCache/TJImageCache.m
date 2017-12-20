@@ -105,7 +105,12 @@ static NSString *_tj_imageCacheRootPath;
     }
     
     if (loadAsynchronously) {
-        [[self _readQueue] addOperationWithBlock:^{
+        static dispatch_queue_t readQueue = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL);
+        });
+        dispatch_async(readQueue, ^{
             NSString *const path = [TJImageCache _pathForHash:hash];
             __block UIImage *image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
 
@@ -134,7 +139,7 @@ static NSString *_tj_imageCacheRootPath;
             } else {
                 [self _tryCacheInMemoryAndCallDelegatesForImage:nil url:url hash:hash];
             }
-        }];
+        });
     }
     
     return inMemoryImage;
@@ -336,19 +341,6 @@ static NSString *_tj_imageCacheRootPath;
     dispatch_sync(queue, ^{
         block(mapTable);
     });
-}
-
-+ (NSOperationQueue *)_readQueue
-{
-    static NSOperationQueue *queue = nil;
-    static dispatch_once_t token;
-    
-    dispatch_once(&token, ^{
-        queue = [[NSOperationQueue alloc] init];
-        [queue setMaxConcurrentOperationCount:1];
-    });
-    
-    return queue;
 }
 
 @end
