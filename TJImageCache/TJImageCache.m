@@ -324,7 +324,7 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImage:(IMAGE_CLASS *const)image url:(NSString *const)url hash:(NSString *)hash
++ (void)_tryUpdateMemoryCacheAndCallDelegatesForImage:(IMAGE_CLASS *const)image url:(NSString *const)url hash:(NSString *const)hash
 {
     if (image) {
         [[self _cache] setObject:image forKey:hash];
