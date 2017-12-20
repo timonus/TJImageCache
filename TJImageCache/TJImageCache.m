@@ -96,9 +96,6 @@ static NSString *_tj_imageCacheRootPath;
             image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
             
             if (image) {
-                // update last access date
-                [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
-                
                 // add to in-memory cache
                 [self _setInMemoryImage:image forKey:hash];
                 
@@ -108,6 +105,9 @@ static NSString *_tj_imageCacheRootPath;
                         [delegate didGetImage:image atURL:url];
                     });
                 }
+                
+                // update last access date
+                [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
             } else {
                 if (depth == TJImageCacheDepthInternet) {
                     
