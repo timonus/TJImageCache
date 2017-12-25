@@ -65,7 +65,12 @@ static NSString *_tj_imageCacheRootPath;
     return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(const id<TJImageCacheDelegate>)delegate
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
+{
+    return [self imageAtURL:url depth:depth delegate:delegate forceDecompress:NO];
+}
+
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress
 {
     NSURL *const url = [NSURL URLWithString:urlString];
     if (!url) {
@@ -114,11 +119,9 @@ static NSString *_tj_imageCacheRootPath;
         });
         dispatch_async(readQueue, ^{
             NSString *const path = [self _pathForHash:hash];
-            __block IMAGE_CLASS *image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
-
-            if (image) {
+            if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImage:image url:urlString hash:hash];
+                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
@@ -134,14 +137,13 @@ static NSString *_tj_imageCacheRootPath;
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     if (location) {
                         [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
-                        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
                     }
                     // Inform delegates about success or failure
-                    [self _tryUpdateMemoryCacheAndCallDelegatesForImage:image url:urlString hash:hash];
+                    [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
                 }] resume];
             } else {
                 // Inform delegates about failure
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImage:nil url:urlString hash:hash];
+                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:nil url:urlString hash:hash forceDecompress:forceDecompress];
             }
         });
     }
@@ -324,8 +326,33 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImage:(IMAGE_CLASS *const)image url:(NSString *const)url hash:(NSString *const)hash
++ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)url hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
 {
+    UIImage *image = nil;
+    if (path) {
+        if (forceDecompress) {
+            // Forces decompress to happen here instead of wherever the image is first painted in the UI (on the main thread)
+            // Based off of https://www.cocoanetics.com/2011/10/avoiding-image-decompression-sickness/, but uses kCGImageSourceShouldCacheImmediately introduced in iOS 7.
+            // Also see https://www.objc.io/issues/5-ios7/iOS7-hidden-gems-and-workarounds/#image-decompression.
+            CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], (__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue});
+            if (imageSource) {
+                CGImageRef decompressedImage = CGImageSourceCreateImageAtIndex(imageSource, 0, (__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue});
+                if (decompressedImage) {
+                    image = [UIImage imageWithCGImage:decompressedImage];
+                    CGImageRelease(decompressedImage);
+                } else {
+                    // Fall back to primitive image loading.
+                    image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+                }
+                CFRelease(imageSource);
+            } else {
+                // Fall back to primitive image loading.
+                image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+            }
+        } else {
+            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+        }
+    }
     if (image) {
         [[self _cache] setObject:image forKey:hash];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
@@ -346,6 +373,5 @@ static NSString *_tj_imageCacheRootPath;
         [requestDelegates removeObjectForKey:hash];
     }];
 }
-
 
 @end
