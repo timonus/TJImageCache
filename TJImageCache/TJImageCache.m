@@ -328,7 +328,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)url hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
 {
-    UIImage *image = nil;
+    IMAGE_CLASS *image = nil;
     if (path) {
         if (forceDecompress) {
             // Forces decompress to happen here instead of wherever the image is first painted in the UI (on the main thread)
@@ -338,7 +338,7 @@ static NSString *_tj_imageCacheRootPath;
             if (imageSource) {
                 CGImageRef decompressedImage = CGImageSourceCreateImageAtIndex(imageSource, 0, (__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue});
                 if (decompressedImage) {
-                    image = [UIImage imageWithCGImage:decompressedImage];
+                    image = [IMAGE_CLASS imageWithCGImage:decompressedImage];
                     CGImageRelease(decompressedImage);
                 } else {
                     // Fall back to primitive image loading.
