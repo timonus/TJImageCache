@@ -41,7 +41,7 @@ const NSTimeInterval kTJImageViewDefaultImageAppearanceAnimationDuration = 0.25;
     if (imageURLString != _imageURLString && ![imageURLString isEqualToString:_imageURLString]) {
         _imageURLString = [imageURLString copy];
         
-        self.imageView.image = [TJImageCache imageAtURL:imageURLString delegate:self];
+        self.imageView.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthInternet delegate:self forceDecompress:YES];
         self.imageView.alpha = (self.imageView.image != nil) ? 1.0 : 0.0;
     }
 }
