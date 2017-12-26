@@ -330,23 +330,9 @@ static NSString *_tj_imageCacheRootPath;
 {
     IMAGE_CLASS *image = nil;
     if (path) {
+        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
         if (forceDecompress) {
-            // Forces decompress to happen here instead of wherever the image is first painted in the UI (on the main thread)
-            // Based off of https://www.cocoanetics.com/2011/10/avoiding-image-decompression-sickness/, but uses kCGImageSourceShouldCacheImmediately introduced in iOS 7.
-            // Also see https://www.objc.io/issues/5-ios7/iOS7-hidden-gems-and-workarounds/#image-decompression.
-            CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], (__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue});
-            if (imageSource) {
-                CGImageRef decompressedImage = CGImageSourceCreateImageAtIndex(imageSource, 0, (__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue});
-                if (decompressedImage) {
-                    image = [IMAGE_CLASS imageWithCGImage:decompressedImage];
-                    CGImageRelease(decompressedImage);
-                }
-                CFRelease(imageSource);
-            }
-        }
-        if (!image) {
-            // Fall back to primitive image loading.
-            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+            image = [self _predrawnImageFromImage:image];
         }
     }
     if (image) {
@@ -368,6 +354,82 @@ static NSString *_tj_imageCacheRootPath;
         });
         [requestDelegates removeObjectForKey:hash];
     }];
+}
+
+// Taken from https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
++ (IMAGE_CLASS *)_predrawnImageFromImage:(IMAGE_CLASS *)imageToPredraw
+{
+    // Always use a device RGB color space for simplicity and predictability what will be going on.
+    static CGColorSpaceRef colorSpaceDeviceRGBRef = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
+    });
+    // Early return on failure!
+    if (!colorSpaceDeviceRGBRef) {
+        NSLog(@"Failed to `CGColorSpaceCreateDeviceRGB` for image %@", imageToPredraw);
+        return imageToPredraw;
+    }
+    
+    // Even when the image doesn't have transparency, we have to add the extra channel because Quartz doesn't support other pixel formats than 32 bpp/8 bpc for RGB:
+    // kCGImageAlphaNoneSkipFirst, kCGImageAlphaNoneSkipLast, kCGImageAlphaPremultipliedFirst, kCGImageAlphaPremultipliedLast
+    // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
+    size_t numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
+    
+    // "In iOS 4.0 and later, and OS X v10.6 and later, you can pass NULL if you want Quartz to allocate memory for the bitmap." (source: docs)
+    void *data = NULL;
+    size_t width = imageToPredraw.size.width;
+    size_t height = imageToPredraw.size.height;
+    size_t bitsPerComponent = CHAR_BIT;
+    
+    size_t bitsPerPixel = (bitsPerComponent * numberOfComponents);
+    size_t bytesPerPixel = (bitsPerPixel / 8);
+    size_t bytesPerRow = (bytesPerPixel * width);
+    
+    CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault;
+    
+    CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(imageToPredraw.CGImage);
+    // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
+    // "For bitmaps created in iOS 3.2 and later, the drawing environment uses the premultiplied ARGB format to store the bitmap data." (source: docs)
+    if (alphaInfo == kCGImageAlphaNone || alphaInfo == kCGImageAlphaOnly) {
+        alphaInfo = kCGImageAlphaNoneSkipFirst;
+    } else if (alphaInfo == kCGImageAlphaFirst) {
+        // Hack to strip alpha
+        // http://stackoverflow.com/a/21416518/3943258
+        //        alphaInfo = kCGImageAlphaPremultipliedFirst;
+        alphaInfo = kCGImageAlphaNoneSkipFirst;
+    } else if (alphaInfo == kCGImageAlphaLast) {
+        // Hack to strip alpha
+        // http://stackoverflow.com/a/21416518/3943258
+        //        alphaInfo = kCGImageAlphaPremultipliedLast;
+        alphaInfo = kCGImageAlphaNoneSkipLast;
+    }
+    // "The constants for specifying the alpha channel information are declared with the `CGImageAlphaInfo` type but can be passed to this parameter safely." (source: docs)
+    bitmapInfo |= alphaInfo;
+    
+    // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
+    // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
+    CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
+    // Early return on failure!
+    if (!bitmapContextRef) {
+        NSLog(@"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, bitsPerComponent, bytesPerRow, imageToPredraw);
+        return imageToPredraw;
+    }
+    
+    // Draw image in bitmap context and create image by preserving receiver's properties.
+    CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, imageToPredraw.size.width, imageToPredraw.size.height), imageToPredraw.CGImage);
+    CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
+    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef scale:imageToPredraw.scale orientation:imageToPredraw.imageOrientation];
+    CGImageRelease(predrawnImageRef);
+    CGContextRelease(bitmapContextRef);
+    
+    // Early return on failure!
+    if (!predrawnImage) {
+        NSLog(@"Failed to `imageWithCGImage:scale:orientation:` with image ref %@ created with color space %@ and bitmap context %@ and properties and properties (scale: %f orientation: %ld) for image %@", predrawnImageRef, colorSpaceDeviceRGBRef, bitmapContextRef, imageToPredraw.scale, (long)imageToPredraw.imageOrientation, imageToPredraw);
+        return imageToPredraw;
+    }
+    
+    return predrawnImage;
 }
 
 @end
