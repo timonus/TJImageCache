@@ -340,16 +340,12 @@ static NSString *_tj_imageCacheRootPath;
                 if (decompressedImage) {
                     image = [IMAGE_CLASS imageWithCGImage:decompressedImage];
                     CGImageRelease(decompressedImage);
-                } else {
-                    // Fall back to primitive image loading.
-                    image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
                 }
                 CFRelease(imageSource);
-            } else {
-                // Fall back to primitive image loading.
-                image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
             }
-        } else {
+        }
+        if (!image) {
+            // Fall back to primitive image loading.
             image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
         }
     }
