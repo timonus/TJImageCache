@@ -45,8 +45,7 @@
         [cell.contentView addSubview:imageView];
     }
     
-    const CGFloat size = cell.bounds.size.width;
-    imageView.imageURLString = [NSString stringWithFormat:@"http://lorempixel.com/%0.0f/%0.0f/animals/%ld", size, size, (long)indexPath.row];
+    imageView.imageURLString = [NSString stringWithFormat:@"http://lorempixel.com/%zd/%zd", 200 + indexPath.row, 200 + indexPath.row / 5];
     
     return cell;
 }
