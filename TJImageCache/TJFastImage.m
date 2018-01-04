@@ -12,7 +12,7 @@
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque)
 {
     UIImage *image = nil;
-    if ([UIGraphicsImageRenderer class]) {
+    if (@available(iOS 10.0, *)) {
         UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
         image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
             drawBlock(rendererContext.CGContext);
