@@ -79,18 +79,19 @@ static NSString *_tj_imageCacheRootPath;
     
     // Attempt load from cache.
     
-    NSString *const hash = [self hash:urlString];
-    __block IMAGE_CLASS *inMemoryImage = [[self _cache] objectForKey:hash];
+    __block IMAGE_CLASS *inMemoryImage = [[self _cache] objectForKey:urlString];
     
     // Attempt load from map table.
     
+    NSString *hash = nil;
     if (!inMemoryImage) {
+        hash = [self hash:urlString];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             inMemoryImage = [mapTable objectForKey:hash];
         }];
         if (inMemoryImage) {
             // Propagate back into our cache.
-            [[self _cache] setObject:inMemoryImage forKey:hash];
+            [[self _cache] setObject:inMemoryImage forKey:urlString];
         }
     }
     
@@ -155,12 +156,11 @@ static NSString *_tj_imageCacheRootPath;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
 {
-    NSString *const hash = [self hash:url];
-    
-    if ([[self _cache] objectForKey:hash]) {
+    if ([[self _cache] objectForKey:url]) {
         return TJImageCacheDepthMemory;
     }
     
+    NSString *const hash = [self hash:url];
     __block BOOL isImageInMapTable = NO;
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         isImageInMapTable = [mapTable objectForKey:hash] != nil;
@@ -196,8 +196,8 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)removeImageAtURL:(NSString *const)url
 {
+    [[self _cache] removeObjectForKey:url];
     NSString *const hash = [self hash:url];
-    [[self _cache] removeObjectForKey:hash];
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
     }];
@@ -282,6 +282,7 @@ static NSString *_tj_imageCacheRootPath;
     return path;
 }
 
+/// Keys are image URL strings, NOT hashes
 + (NSCache<NSString *, IMAGE_CLASS *> *)_cache
 {
     static NSCache *cache = nil;
@@ -294,6 +295,7 @@ static NSString *_tj_imageCacheRootPath;
     return cache;
 }
 
+/// Keys are image URL string hashes (made using +hash:)
 + (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block
 {
     static NSMapTable *mapTable = nil;
@@ -310,6 +312,7 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
+/// Keys are image URL string hashes (made using +hash:)
 + (void)_requestDelegatesWithBlock:(void (^)(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates))block
 {
     static NSMutableDictionary<NSString *, NSHashTable *> *requests = nil;
@@ -336,7 +339,7 @@ static NSString *_tj_imageCacheRootPath;
         }
     }
     if (image) {
-        [[self _cache] setObject:image forKey:hash];
+        [[self _cache] setObject:image forKey:url];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             [mapTable setObject:image forKey:hash];
         }];
