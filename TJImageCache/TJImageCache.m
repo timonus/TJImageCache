@@ -282,7 +282,7 @@ static NSString *_tj_imageCacheRootPath;
     return path;
 }
 
-+ (NSCache *)_cache
++ (NSCache<NSString *, IMAGE_CLASS *> *)_cache
 {
     static NSCache *cache = nil;
     static dispatch_once_t token;
@@ -294,7 +294,7 @@ static NSString *_tj_imageCacheRootPath;
     return cache;
 }
 
-+ (void)_mapTableWithBlock:(void (^)(NSMapTable *mapTable))block
++ (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block
 {
     static NSMapTable *mapTable = nil;
     static dispatch_once_t token;
