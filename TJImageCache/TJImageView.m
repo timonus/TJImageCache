@@ -16,7 +16,7 @@ const NSTimeInterval kTJImageViewDefaultImageAppearanceAnimationDuration = 0.25;
 
 #pragma mark - UIView
 
-- (id)initWithFrame:(CGRect)frame
+- (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
