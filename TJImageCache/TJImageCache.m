@@ -387,7 +387,7 @@ static NSString *_tj_imageCacheRootPath;
     void *data = NULL;
     size_t width = imageToPredraw.size.width;
     size_t height = imageToPredraw.size.height;
-    size_t bitsPerComponent = CHAR_BIT;
+    static const size_t bitsPerComponent = CHAR_BIT;
     
     size_t bitsPerPixel = (bitsPerComponent * numberOfComponents);
     size_t bytesPerPixel = (bitsPerPixel / 8);
