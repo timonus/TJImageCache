@@ -365,20 +365,23 @@ static NSString *_tj_imageCacheRootPath;
 {
     // Always use a device RGB color space for simplicity and predictability what will be going on.
     static CGColorSpaceRef colorSpaceDeviceRGBRef = nil;
+    static size_t numberOfComponents;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
+        
+        if (colorSpaceDeviceRGBRef) {
+            // Even when the image doesn't have transparency, we have to add the extra channel because Quartz doesn't support other pixel formats than 32 bpp/8 bpc for RGB:
+            // kCGImageAlphaNoneSkipFirst, kCGImageAlphaNoneSkipLast, kCGImageAlphaPremultipliedFirst, kCGImageAlphaPremultipliedLast
+            // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
+            numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
+        }
     });
     // Early return on failure!
     if (!colorSpaceDeviceRGBRef) {
         NSLog(@"Failed to `CGColorSpaceCreateDeviceRGB` for image %@", imageToPredraw);
         return imageToPredraw;
     }
-    
-    // Even when the image doesn't have transparency, we have to add the extra channel because Quartz doesn't support other pixel formats than 32 bpp/8 bpc for RGB:
-    // kCGImageAlphaNoneSkipFirst, kCGImageAlphaNoneSkipLast, kCGImageAlphaPremultipliedFirst, kCGImageAlphaPremultipliedLast
-    // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
-    size_t numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
     
     // "In iOS 4.0 and later, and OS X v10.6 and later, you can pass NULL if you want Quartz to allocate memory for the bitmap." (source: docs)
     void *data = NULL;
