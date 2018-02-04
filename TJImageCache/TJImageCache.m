@@ -17,6 +17,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (void)configureWithRootPath:(NSString *const)rootPath
 {
+    NSParameterAssert(rootPath);
     NSAssert(_tj_imageCacheRootPath == nil, @"You should not configure %@'s root path more than once.", NSStringFromClass([self class]));
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
