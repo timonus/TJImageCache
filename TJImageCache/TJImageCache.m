@@ -96,7 +96,7 @@ static NSString *_tj_imageCacheRootPath;
     // Check if there's an existing disk/network request running for this image.
     __block BOOL loadAsynchronously = NO;
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
-        [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
+        [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
             NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
             if (!delegatesForRequest) {
                 delegatesForRequest = [NSHashTable weakObjectsHashTable];
@@ -351,7 +351,7 @@ static NSString *_tj_imageCacheRootPath;
             [mapTable setObject:image forKey:urlString];
         }];
     }
-    [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
+    [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
         NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
         dispatch_async(dispatch_get_main_queue(), ^{
             for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
