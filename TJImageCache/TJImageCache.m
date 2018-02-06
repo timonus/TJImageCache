@@ -83,11 +83,9 @@ static NSString *_tj_imageCacheRootPath;
     
     // Attempt load from map table.
     
-    NSString *hash = nil;
     if (!inMemoryImage) {
-        hash = [self hash:urlString];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
-            inMemoryImage = [mapTable objectForKey:hash];
+            inMemoryImage = [mapTable objectForKey:urlString];
         }];
         if (inMemoryImage) {
             // Propagate back into our cache.
@@ -99,10 +97,10 @@ static NSString *_tj_imageCacheRootPath;
     __block BOOL loadAsynchronously = NO;
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
         [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
-            NSHashTable *delegatesForRequest = [requestDelegates objectForKey:hash];
+            NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
             if (!delegatesForRequest) {
                 delegatesForRequest = [NSHashTable weakObjectsHashTable];
-                [requestDelegates setObject:delegatesForRequest forKey:hash];
+                [requestDelegates setObject:delegatesForRequest forKey:urlString];
                 loadAsynchronously = YES;
             }
             if (delegate) {
@@ -119,6 +117,7 @@ static NSString *_tj_imageCacheRootPath;
             readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL);
         });
         dispatch_async(readQueue, ^{
+            NSString *const hash = [self hash:urlString];
             NSString *const path = [self _pathForHash:hash];
             if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
@@ -161,16 +160,16 @@ static NSString *_tj_imageCacheRootPath;
         return TJImageCacheDepthMemory;
     }
     
-    NSString *const hash = [self hash:url];
     __block BOOL isImageInMapTable = NO;
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
-        isImageInMapTable = [mapTable objectForKey:hash] != nil;
+        isImageInMapTable = [mapTable objectForKey:url] != nil;
     }];
     
     if (isImageInMapTable) {
         return TJImageCacheDepthMemory;
     }
     
+    NSString *const hash = [self hash:url];
     if ([[NSFileManager defaultManager] fileExistsAtPath:[self _pathForHash:hash]]) {
         return TJImageCacheDepthDisk;
     }
@@ -201,6 +200,7 @@ static NSString *_tj_imageCacheRootPath;
     NSString *const hash = [self hash:url];
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
+        [mapTable removeObjectForKey:url];
     }];
     [[NSFileManager defaultManager] removeItemAtPath:[self _pathForHash:hash] error:nil];
 }
@@ -297,6 +297,11 @@ static NSString *_tj_imageCacheRootPath;
 }
 
 /// Keys are image URL string hashes (made using +hash:)
+
+/// Every image maps to two keys in this maps table.
+/// { image URL string -> image,
+///   image URL string hash -> image }
+/// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
 + (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block
 {
     static NSMapTable *mapTable = nil;
@@ -313,7 +318,7 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
-/// Keys are image URL string hashes (made using +hash:)
+/// Keys are image URL strings
 + (void)_requestDelegatesWithBlock:(void (^)(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates))block
 {
     static NSMutableDictionary<NSString *, NSHashTable *> *requests = nil;
@@ -343,10 +348,11 @@ static NSString *_tj_imageCacheRootPath;
         [[self _cache] setObject:image forKey:url];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             [mapTable setObject:image forKey:hash];
+            [mapTable setObject:image forKey:url];
         }];
     }
     [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
-        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:hash];
+        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:url];
         dispatch_async(dispatch_get_main_queue(), ^{
             for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
                 if (image) {
@@ -356,7 +362,7 @@ static NSString *_tj_imageCacheRootPath;
                 }
             }
         });
-        [requestDelegates removeObjectForKey:hash];
+        [requestDelegates removeObjectForKey:url];
     }];
 }
 
