@@ -51,24 +51,24 @@ static NSString *_tj_imageCacheRootPath;
 
 #pragma mark - Image Fetching
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
 {
-    return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:nil];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthInternet delegate:nil];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth
 {
-    return [self imageAtURL:url depth:depth delegate:nil];
+    return [self imageAtURL:urlString depth:depth delegate:nil];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:url depth:TJImageCacheDepthInternet delegate:delegate];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthInternet delegate:delegate];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:url depth:depth delegate:delegate forceDecompress:NO];
+    return [self imageAtURL:urlString depth:depth delegate:delegate forceDecompress:NO];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress
@@ -154,22 +154,22 @@ static NSString *_tj_imageCacheRootPath;
 
 #pragma mark - Cache Checking
 
-+ (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url
++ (TJImageCacheDepth)depthForImageAtURL:(NSString *const)urlString
 {
-    if ([[self _cache] objectForKey:url]) {
+    if ([[self _cache] objectForKey:urlString]) {
         return TJImageCacheDepthMemory;
     }
     
     __block BOOL isImageInMapTable = NO;
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
-        isImageInMapTable = [mapTable objectForKey:url] != nil;
+        isImageInMapTable = [mapTable objectForKey:urlString] != nil;
     }];
     
     if (isImageInMapTable) {
         return TJImageCacheDepthMemory;
     }
     
-    NSString *const hash = [self hash:url];
+    NSString *const hash = [self hash:urlString];
     if ([[NSFileManager defaultManager] fileExistsAtPath:[self _pathForHash:hash]]) {
         return TJImageCacheDepthDisk;
     }
@@ -194,13 +194,13 @@ static NSString *_tj_imageCacheRootPath;
 
 #pragma mark - Cache Manipulation
 
-+ (void)removeImageAtURL:(NSString *const)url
++ (void)removeImageAtURL:(NSString *const)urlString
 {
-    [[self _cache] removeObjectForKey:url];
-    NSString *const hash = [self hash:url];
+    [[self _cache] removeObjectForKey:urlString];
+    NSString *const hash = [self hash:urlString];
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
-        [mapTable removeObjectForKey:url];
+        [mapTable removeObjectForKey:urlString];
     }];
     [[NSFileManager defaultManager] removeItemAtPath:[self _pathForHash:hash] error:nil];
 }
@@ -335,7 +335,7 @@ static NSString *_tj_imageCacheRootPath;
     });
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)url hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
++ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
 {
     IMAGE_CLASS *image = nil;
     if (path) {
@@ -345,24 +345,24 @@ static NSString *_tj_imageCacheRootPath;
         }
     }
     if (image) {
-        [[self _cache] setObject:image forKey:url];
+        [[self _cache] setObject:image forKey:urlString];
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             [mapTable setObject:image forKey:hash];
-            [mapTable setObject:image forKey:url];
+            [mapTable setObject:image forKey:urlString];
         }];
     }
     [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *,NSHashTable *> *requestDelegates) {
-        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:url];
+        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
         dispatch_async(dispatch_get_main_queue(), ^{
             for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
                 if (image) {
-                    [delegate didGetImage:image atURL:url];
+                    [delegate didGetImage:image atURL:urlString];
                 } else if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-                    [delegate didFailToGetImageAtURL:url];
+                    [delegate didFailToGetImageAtURL:urlString];
                 }
             }
         });
-        [requestDelegates removeObjectForKey:url];
+        [requestDelegates removeObjectForKey:urlString];
     }];
 }
 
