@@ -12,18 +12,10 @@
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque);
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque)
 {
-    UIImage *image = nil;
-    if (@available(iOS 10.0, *)) {
-        UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
-        image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
-            drawBlock(rendererContext.CGContext);
-        }];
-    } else {
-        UIGraphicsBeginImageContextWithOptions(size, NO, [UIScreen mainScreen].scale);
-        drawBlock(UIGraphicsGetCurrentContext());
-        image = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-    }
+    UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+    UIImage *const image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+        drawBlock(rendererContext.CGContext);
+    }];
     return image;
 }
 
