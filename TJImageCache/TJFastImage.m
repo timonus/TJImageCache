@@ -67,7 +67,8 @@ UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius)
         imagesForCornerRadii = [NSCache new];
     });
     
-    UIImage *image = [imagesForCornerRadii objectForKey:@(cornerRadius)];
+    NSNumber *const key = @(cornerRadius);
+    UIImage *image = [imagesForCornerRadii objectForKey:key];
     if (!image) {
         const CGFloat sideLength = cornerRadius * 2.0 + 1.0;
         const CGSize size = (CGSize){sideLength, sideLength};
@@ -81,7 +82,7 @@ UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius)
         
         image = drawImageWithBlockSizeOpaque(drawBlock, size, cornerRadius == 0.0);
         image = [image resizableImageWithCapInsets:(UIEdgeInsets){cornerRadius, cornerRadius, cornerRadius, cornerRadius}];
-        [imagesForCornerRadii setObject:image forKey:@(cornerRadius)];
+        [imagesForCornerRadii setObject:image forKey:key];
     }
     
     return image;
