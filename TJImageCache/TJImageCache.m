@@ -296,8 +296,6 @@ static NSString *_tj_imageCacheRootPath;
     return cache;
 }
 
-/// Keys are image URL string hashes (made using +hash:)
-
 /// Every image maps to two keys in this maps table.
 /// { image URL string -> image,
 ///   image URL string hash -> image }
