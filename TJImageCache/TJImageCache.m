@@ -349,19 +349,20 @@ static NSString *_tj_imageCacheRootPath;
             [mapTable setObject:image forKey:urlString];
         }];
     }
+    __block NSHashTable *delegatesForRequest = nil;
     [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
-        NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
-                if (image) {
-                    [delegate didGetImage:image atURL:urlString];
-                } else if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
-                    [delegate didFailToGetImageAtURL:urlString];
-                }
-            }
-        });
+        delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
     }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
+            if (image) {
+                [delegate didGetImage:image atURL:urlString];
+            } else if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+                [delegate didFailToGetImageAtURL:urlString];
+            }
+        }
+    });
 }
 
 // Taken from https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
