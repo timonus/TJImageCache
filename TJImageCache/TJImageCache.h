@@ -8,7 +8,7 @@
 typedef NS_ENUM(NSUInteger, TJImageCacheDepth) {
     TJImageCacheDepthMemory,
     TJImageCacheDepthDisk,
-    TJImageCacheDepthInternet
+    TJImageCacheDepthNetwork
 };
 
 NS_ASSUME_NONNULL_BEGIN

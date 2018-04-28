@@ -53,7 +53,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthInternet delegate:nil];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth
@@ -63,7 +63,7 @@ static NSString *_tj_imageCacheRootPath;
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthInternet delegate:delegate];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
@@ -125,7 +125,7 @@ static NSString *_tj_imageCacheRootPath;
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
-            } else if (depth == TJImageCacheDepthInternet) {
+            } else if (depth == TJImageCacheDepthNetwork) {
                 static NSURLSession *session = nil;
                 static dispatch_once_t onceToken;
                 dispatch_once(&onceToken, ^{
@@ -174,7 +174,7 @@ static NSString *_tj_imageCacheRootPath;
         return TJImageCacheDepthDisk;
     }
     
-    return TJImageCacheDepthInternet;
+    return TJImageCacheDepthNetwork;
 }
 
 + (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
