@@ -86,7 +86,7 @@ static NSString *_tj_imageCacheRootPath;
     if (!inMemoryImage) {
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             inMemoryImage = [mapTable objectForKey:urlString];
-        }];
+        } blockIsWriteOnly:NO];
         if (inMemoryImage) {
             // Propagate back into our cache.
             [[self _cache] setObject:inMemoryImage forKey:urlString];
@@ -163,7 +163,7 @@ static NSString *_tj_imageCacheRootPath;
     __block BOOL isImageInMapTable = NO;
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         isImageInMapTable = [mapTable objectForKey:urlString] != nil;
-    }];
+    } blockIsWriteOnly:NO];
     
     if (isImageInMapTable) {
         return TJImageCacheDepthMemory;
@@ -201,7 +201,7 @@ static NSString *_tj_imageCacheRootPath;
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeObjectForKey:hash];
         [mapTable removeObjectForKey:urlString];
-    }];
+    } blockIsWriteOnly:YES];
     [[NSFileManager defaultManager] removeItemAtPath:[self _pathForHash:hash] error:nil];
 }
 
@@ -210,7 +210,7 @@ static NSString *_tj_imageCacheRootPath;
     [[self _cache] removeAllObjects];
     [self _mapTableWithBlock:^(NSMapTable *mapTable) {
         [mapTable removeAllObjects];
-    }];
+    } blockIsWriteOnly:YES];
 }
 
 + (void)dumpDiskCache
@@ -234,7 +234,7 @@ static NSString *_tj_imageCacheRootPath;
                 __block BOOL isInUse = NO;
                 [self _mapTableWithBlock:^(NSMapTable *mapTable) {
                     isInUse = [mapTable objectForKey:file] != nil;
-                }];
+                } blockIsWriteOnly:NO];
                 if (!isInUse && !block(file, lastAccess, createdDate)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                     [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
@@ -300,7 +300,7 @@ static NSString *_tj_imageCacheRootPath;
 /// { image URL string -> image,
 ///   image URL string hash -> image }
 /// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
-+ (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block
++ (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block blockIsWriteOnly:(const BOOL)blockIsWriteOnly
 {
     static NSMapTable *mapTable = nil;
     static dispatch_once_t token;
@@ -308,12 +308,18 @@ static NSString *_tj_imageCacheRootPath;
     
     dispatch_once(&token, ^{
         mapTable = [NSMapTable strongToWeakObjectsMapTable];
-        queue = dispatch_queue_create("TJImageCache map table queue", DISPATCH_QUEUE_SERIAL);
+        queue = dispatch_queue_create("TJImageCache map table queue", DISPATCH_QUEUE_CONCURRENT);
     });
     
-    dispatch_sync(queue, ^{
-        block(mapTable);
-    });
+    if (blockIsWriteOnly) {
+        dispatch_barrier_async(queue, ^{
+            block(mapTable);
+        });
+    } else {
+        dispatch_sync(queue, ^{
+            block(mapTable);
+        });
+    }
 }
 
 /// Keys are image URL strings
@@ -347,7 +353,7 @@ static NSString *_tj_imageCacheRootPath;
         [self _mapTableWithBlock:^(NSMapTable *mapTable) {
             [mapTable setObject:image forKey:hash];
             [mapTable setObject:image forKey:urlString];
-        }];
+        } blockIsWriteOnly:YES];
     }
     __block NSHashTable *delegatesForRequest = nil;
     [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
