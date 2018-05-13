@@ -299,7 +299,7 @@ static NSString *_tj_imageCacheRootPath;
     return cache;
 }
 
-/// Every image maps to two keys in this maps table.
+/// Every image maps to two keys in this map table.
 /// { image URL string -> image,
 ///   image URL string hash -> image }
 /// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
