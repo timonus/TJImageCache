@@ -12,7 +12,23 @@
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque);
 UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque)
 {
-    UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+    static UIGraphicsImageRendererFormat *format = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        format = [[UIGraphicsImageRendererFormat alloc] init];
+#if defined(__IPHONE_12_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0
+        // We assume the images we receive don't contain extended range colors.
+        // Those colors are explicitly filtered out when drawing as an optimization.
+        if (@available(iOS 12.0, *)) {
+            format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
+        } else {
+#endif
+            format.prefersExtendedRange = NO;
+#if defined(__IPHONE_12_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0
+        }
+#endif
+    });
+    UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
     UIImage *const image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
         drawBlock(rendererContext.CGContext);
     }];
