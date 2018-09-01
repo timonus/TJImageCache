@@ -14,12 +14,14 @@ UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef conte
 {
     UIImage *image = nil;
     if (@available(iOS 10.0, *)) {
-        UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
+        UIGraphicsImageRendererFormat *const format = [UIGraphicsImageRendererFormat new];
+        format.opaque = opaque;
+        UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
         image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
             drawBlock(rendererContext.CGContext);
         }];
     } else {
-        UIGraphicsBeginImageContextWithOptions(size, NO, [UIScreen mainScreen].scale);
+        UIGraphicsBeginImageContextWithOptions(size, opaque, [UIScreen mainScreen].scale);
         drawBlock(UIGraphicsGetCurrentContext());
         image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
