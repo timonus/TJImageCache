@@ -92,7 +92,12 @@ if (self.needsUpdateImage) {\
 /* Not to be called, similar to never calling -layoutSubviews. Call -setNeedsUpdateImage instead. */\
 - (void)updateImage\
 {\
-UIColor *const opaqueBackgroundColor = self.imageOpaqueBackgroundColor;\
+UIColor *opaqueBackgroundColor = nil;\
+if (@available(iOS 11.0, *)) {\
+opaqueBackgroundColor = self.accessibilityIgnoresInvertColors && UIAccessibilityIsInvertColorsEnabled() ? nil : self.imageOpaqueBackgroundColor;\
+} else {\
+opaqueBackgroundColor = self.imageOpaqueBackgroundColor;\
+}\
 self.TJ_FAST_IMAGE_PROPERTY = placeholderImageWithCornerRadius(self.imageCornerRadius, opaqueBackgroundColor);\
 \
 UIImage *const image = self.loadedImage;\
@@ -105,7 +110,7 @@ dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{\
 UIImage *const drawnImage = imageForImageSizeCornerRadius(image, size, cornerRadius, opaqueBackgroundColor);\
 dispatch_async(dispatch_get_main_queue(), ^{\
 /* These can mutate while scrolling quickly. We only want to accept the asynchronously drawn image if it matches our expectations. */\
-if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius && (opaqueBackgroundColor == self.imageOpaqueBackgroundColor || [opaqueBackgroundColor isEqual:self.imageOpaqueBackgroundColor])) {\
+if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius) {\
 self.TJ_FAST_IMAGE_PROPERTY = drawnImage;\
 }\
 });\
