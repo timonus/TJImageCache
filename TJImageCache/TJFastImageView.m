@@ -21,8 +21,18 @@ TJ_FAST_IMAGE_PRIVATE_INTERFACE
 {
     if (self = [super initWithFrame:frame]) {
         [super setBackgroundColor:[UIColor clearColor]];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(invertColorsStatusDidChange:)
+                                                     name:UIAccessibilityInvertColorsStatusDidChangeNotification
+                                                   object:nil];
     }
     return self;
+}
+
+- (void)invertColorsStatusDidChange:(NSNotification *)notification
+{
+    [self setNeedsUpdateImage];
 }
 
 TJ_FAST_IMAGE_DEFINITION(image)
