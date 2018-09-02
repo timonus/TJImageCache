@@ -11,6 +11,8 @@
 
 @interface TJFastImageView : UIImageView
 
-TJ_FAST_IMAGE_INTERFACE
+@property (nonatomic, copy) NSString *imageURLString;
+@property (nonatomic, assign) CGFloat imageCornerRadius;
+@property (nonatomic, strong) UIColor *imageOpaqueBackgroundColor;
 
 @end
