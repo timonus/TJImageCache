@@ -22,8 +22,23 @@ UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), c
         };
     }
     if (@available(iOS 10.0, *)) {
-        UIGraphicsImageRendererFormat *const format = [UIGraphicsImageRendererFormat new];
-        format.opaque = opaque;
+        static UIGraphicsImageRendererFormat *transparentFormat = nil;
+        static UIGraphicsImageRendererFormat *opaqueFormat = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            transparentFormat = [UIGraphicsImageRendererFormat new];
+        });
+        UIGraphicsImageRendererFormat *format = nil;
+        if (opaque) {
+            static dispatch_once_t onceToken;
+            dispatch_once(&onceToken, ^{
+                opaqueFormat = [transparentFormat copy];
+                opaqueFormat.opaque = YES;
+            });
+            format = opaqueFormat;
+        } else {
+            format = transparentFormat;
+        }
         UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
         image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
             drawBlock(rendererContext.CGContext);
