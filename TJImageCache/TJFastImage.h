@@ -13,7 +13,8 @@
 
 #define TJ_FAST_IMAGE_INTERFACE \
 @property (nonatomic, copy) NSString *imageURLString;\
-@property (nonatomic, assign) CGFloat imageCornerRadius;
+@property (nonatomic, assign) CGFloat imageCornerRadius;\
+@property (nonatomic, strong) UIColor *imageOpaqueBackgroundColor;\
 
 #define TJ_FAST_IMAGE_PRIVATE_INTERFACE \
 @property (nonatomic, strong) UIImage *loadedImage;\
@@ -38,6 +39,14 @@ self.loadedImage = [TJImageCache imageAtURL:self.imageURLString delegate:self];\
 {\
 if (imageCornerRadius != _imageCornerRadius) {\
 _imageCornerRadius = imageCornerRadius;\
+[self setNeedsUpdateImage];\
+}\
+}\
+\
+- (void)setImageOpaqueBackgroundColor:(UIColor *const)color\
+{\
+if (color != _imageOpaqueBackgroundColor && ![color isEqual:_imageOpaqueBackgroundColor]) {\
+_imageOpaqueBackgroundColor = color;\
 [self setNeedsUpdateImage];\
 }\
 }\
@@ -83,7 +92,8 @@ if (self.needsUpdateImage) {\
 /* Not to be called, similar to never calling -layoutSubviews. Call -setNeedsUpdateImage instead. */\
 - (void)updateImage\
 {\
-self.TJ_FAST_IMAGE_PROPERTY = placeholderImageWithCornerRadius(self.imageCornerRadius);\
+UIColor *const opaqueBackgroundColor = self.imageOpaqueBackgroundColor;\
+self.TJ_FAST_IMAGE_PROPERTY = placeholderImageWithCornerRadius(self.imageCornerRadius, opaqueBackgroundColor);\
 \
 UIImage *const image = self.loadedImage;\
 if (image) {\
@@ -92,10 +102,10 @@ const CGSize size = self.bounds.size;\
 const CGFloat cornerRadius = self.imageCornerRadius;\
 \
 dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{\
-UIImage *const drawnImage = imageForImageSizeCornerRadius(image, size, cornerRadius);\
+UIImage *const drawnImage = imageForImageSizeCornerRadius(image, size, cornerRadius, opaqueBackgroundColor);\
 dispatch_async(dispatch_get_main_queue(), ^{\
 /* These can mutate while scrolling quickly. We only want to accept the asynchronously drawn image if it matches our expectations. */\
-if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius) {\
+if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius && (opaqueBackgroundColor == self.imageOpaqueBackgroundColor || [opaqueBackgroundColor isEqual:self.imageOpaqueBackgroundColor])) {\
 self.TJ_FAST_IMAGE_PROPERTY = drawnImage;\
 }\
 });\
@@ -105,7 +115,7 @@ self.needsUpdateImage = NO;\
 }\
 
 // Must be thread safe
-UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius);
-UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius);
+UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *opaqueBackgroundColor);
+UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *opaqueBackgroundColor);
 
 #endif /* TJFastImage_h */

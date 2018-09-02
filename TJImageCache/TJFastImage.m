@@ -9,10 +9,18 @@
 #import "TJFastImage.h"
 
 // Must be thread safe
-UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque);
-UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef context), const CGSize size, const BOOL opaque)
+UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), const CGSize size, UIColor *const opaqueBackgroundColor);
+UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), const CGSize size, UIColor *const opaqueBackgroundColor)
 {
     UIImage *image = nil;
+    const BOOL opaque = opaqueBackgroundColor != nil;
+    if (opaque) {
+        drawBlock = ^(CGContextRef context) {
+            [opaqueBackgroundColor setFill];
+            CGContextFillRect(context, (CGRect){CGPointZero, size});
+            drawBlock(context);
+        };
+    }
     if (@available(iOS 10.0, *)) {
         UIGraphicsImageRendererFormat *const format = [UIGraphicsImageRendererFormat new];
         format.opaque = opaque;
@@ -30,14 +38,13 @@ UIImage *drawImageWithBlockSizeOpaque(const void (^drawBlock)(CGContextRef conte
 }
 
 
-UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius)
+UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *opaqueBackgroundColor)
 {
     UIImage *drawnImage = nil;
     if (size.width > 0.0 && size.height > 0.0) {
         const CGRect rect = (CGRect){CGPointZero, size};
         const CGFloat scale = [UIScreen mainScreen].scale;
-        
-        const void (^drawBlock)(CGContextRef context) = ^(CGContextRef context) {
+        drawnImage = drawImageWithBlockSizeOpaque(^(CGContextRef context) {
             UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
             [clippingPath addClip]; // http://stackoverflow.com/a/13870097
             CGRect drawRect;
@@ -54,37 +61,33 @@ UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, 
             [[UIColor lightGrayColor] setStroke];
             CGContextSetLineWidth(context, MIN(1.0 / scale, 0.5));
             [clippingPath stroke];
-        };
-        
-        drawnImage = drawImageWithBlockSizeOpaque(drawBlock, size, cornerRadius == 0.0);
+        }, size, opaqueBackgroundColor);
     }
     return drawnImage;
 }
 
-UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius)
+UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *opaqueBackgroundColor)
 {
-    static NSCache *imagesForCornerRadii = nil;
+    static NSCache *cachedImages = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        imagesForCornerRadii = [NSCache new];
+        cachedImages = [NSCache new];
     });
     
-    NSNumber *const key = @(cornerRadius);
-    UIImage *image = [imagesForCornerRadii objectForKey:key];
+    NSNumber *const key = @((NSUInteger)cornerRadius ^ [opaqueBackgroundColor hash]);
+    UIImage *image = [cachedImages objectForKey:key];
     if (!image) {
         const CGFloat sideLength = cornerRadius * 2.0 + 1.0;
         const CGSize size = (CGSize){sideLength, sideLength};
         
-        const void (^drawBlock)(CGContextRef context) = ^(CGContextRef context) {
+        image = drawImageWithBlockSizeOpaque(^(CGContextRef context) {
             const CGRect rect = (CGRect){CGPointZero, size};
             UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
             [[UIColor lightGrayColor] setFill];
             [clippingPath fill];
-        };
-        
-        image = drawImageWithBlockSizeOpaque(drawBlock, size, cornerRadius == 0.0);
+        }, size, opaqueBackgroundColor);
         image = [image resizableImageWithCapInsets:(UIEdgeInsets){cornerRadius, cornerRadius, cornerRadius, cornerRadius}];
-        [imagesForCornerRadii setObject:image forKey:key];
+        [cachedImages setObject:image forKey:key];
     }
     
     return image;
