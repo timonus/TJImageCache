@@ -21,7 +21,9 @@ UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), c
             drawBlock(context);
         };
     }
+#if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0
     if (@available(iOS 10.0, *)) {
+#endif
         static UIGraphicsImageRendererFormat *transparentFormat = nil;
         static UIGraphicsImageRendererFormat *opaqueFormat = nil;
         static dispatch_once_t onceToken;
@@ -54,12 +56,14 @@ UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), c
         image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
             drawBlock(rendererContext.CGContext);
         }];
+#if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0
     } else {
         UIGraphicsBeginImageContextWithOptions(size, opaque, [UIScreen mainScreen].scale);
         drawBlock(UIGraphicsGetCurrentContext());
         image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
     }
+#endif
     return image;
 }
 
