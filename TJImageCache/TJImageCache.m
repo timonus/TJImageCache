@@ -22,15 +22,6 @@ static NSString *_tj_imageCacheRootPath;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         _tj_imageCacheRootPath = [rootPath copy];
-        
-        BOOL isDir = NO;
-        if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
-            
-            // Don't back up
-            // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-            [[NSURL fileURLWithPath:_tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
-        }
     });
 }
 
@@ -274,6 +265,20 @@ static NSString *_tj_imageCacheRootPath;
 + (NSString *)_rootPath
 {
     NSAssert(_tj_imageCacheRootPath != nil, @"You should configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // Lazily generate the directory the first time it's accessed if needed.
+        BOOL isDir = NO;
+        if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
+            [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+            
+            // Don't back up
+            // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+            [[NSURL fileURLWithPath:_tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+        }
+    });
+    
     return _tj_imageCacheRootPath;
 }
 
