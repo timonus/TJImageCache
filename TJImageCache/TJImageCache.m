@@ -130,8 +130,8 @@ static NSString *_tj_imageCacheRootPath;
                 
                 NSURL *const url = [NSURL URLWithString:urlString];
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                    if (location) {
-                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[NSURL fileURLWithPath:path] error:nil];
+                    if (location && path) {
+                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
                     }
                     // Inform delegates about success or failure
                     [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
@@ -275,7 +275,8 @@ static NSString *_tj_imageCacheRootPath;
             
             // Don't back up
             // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-            [[NSURL fileURLWithPath:_tj_imageCacheRootPath] setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+            NSURL *const url = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+            [url setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
         }
     });
     
