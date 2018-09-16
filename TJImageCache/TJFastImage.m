@@ -73,7 +73,6 @@ UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, 
     UIImage *drawnImage = nil;
     if (size.width > 0.0 && size.height > 0.0) {
         const CGRect rect = (CGRect){CGPointZero, size};
-        const CGFloat scale = [UIScreen mainScreen].scale;
         drawnImage = drawImageWithBlockSizeOpaque(^(CGContextRef context) {
             UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
             [clippingPath addClip]; // http://stackoverflow.com/a/13870097
@@ -88,9 +87,6 @@ UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, 
                 drawRect = CGRectMake(floor((rect.size.width - scaledWidth) / 2.0), 0.0, scaledWidth, rect.size.height);
             }
             [image drawInRect:drawRect];
-            [[UIColor lightGrayColor] setStroke];
-            CGContextSetLineWidth(context, MIN(1.0 / scale, 0.5));
-            [clippingPath stroke];
         }, size, opaqueBackgroundColor);
     }
     return drawnImage;
