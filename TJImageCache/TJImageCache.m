@@ -131,6 +131,21 @@ static NSString *_tj_imageCacheRootPath;
                 NSURL *const url = [NSURL URLWithString:urlString];
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     if (location && path) {
+                        // Lazily generate the directory the first time it's written to if needed.
+                        static dispatch_once_t onceToken;
+                        dispatch_once(&onceToken, ^{
+                            BOOL isDir = NO;
+                            if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
+                                [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+                                
+                                // Don't back up
+                                // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+                                NSURL *const url = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+                                [url setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+                            }
+                        });
+                        
+                        // Move resulting image into place.
                         [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
                     }
                     // Inform delegates about success or failure
@@ -265,21 +280,6 @@ static NSString *_tj_imageCacheRootPath;
 + (NSString *)_rootPath
 {
     NSAssert(_tj_imageCacheRootPath != nil, @"You should configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
-    
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        // Lazily generate the directory the first time it's accessed if needed.
-        BOOL isDir = NO;
-        if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
-            [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
-            
-            // Don't back up
-            // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-            NSURL *const url = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
-            [url setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
-        }
-    });
-    
     return _tj_imageCacheRootPath;
 }
 
