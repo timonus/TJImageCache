@@ -22,7 +22,8 @@ static const char *kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url
 {
-    if ([url isEqualToString:self.tj_imageURLString]) {
+    NSString *const currentURLString = self.tj_imageURLString;
+    if (currentURLString && [url isEqualToString:currentURLString]) {
         self.image = image;
     }
 }
