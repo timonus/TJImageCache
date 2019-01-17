@@ -103,8 +103,8 @@ static NSString *_tj_imageCacheRootPath;
     // Attempt load from disk and network.
     if (loadAsynchronously) {
         static dispatch_queue_t readQueue = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
+        static dispatch_once_t readQueueOnceToken;
+        dispatch_once(&readQueueOnceToken, ^{
             // NOTE: There could be a perf improvement to be had here using dispatch barriers (https://bit.ly/2FvNNff).
             // The readQueue could be made concurrent, and and writes would have to be added to a dispatch_barrier_sync call like so https://db.tt/1qRAxNvejH (changes marked with *'s)
             // My fear in doing that is that a bunch of threads will be spawned and blocked on I/O.
@@ -121,8 +121,8 @@ static NSString *_tj_imageCacheRootPath;
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
             } else if (depth == TJImageCacheDepthNetwork) {
                 static NSURLSession *session = nil;
-                static dispatch_once_t onceToken;
-                dispatch_once(&onceToken, ^{
+                static dispatch_once_t sessionOnceToken;
+                dispatch_once(&sessionOnceToken, ^{
                     // We use an ephemeral session since TJImageCache does memory and disk caching.
                     // Using NSURLCache would be redundant.
                     session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
@@ -132,16 +132,16 @@ static NSString *_tj_imageCacheRootPath;
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     if (location && path) {
                         // Lazily generate the directory the first time it's written to if needed.
-                        static dispatch_once_t onceToken;
-                        dispatch_once(&onceToken, ^{
+                        static dispatch_once_t rootDirectoryOnceToken;
+                        dispatch_once(&rootDirectoryOnceToken, ^{
                             BOOL isDir = NO;
                             if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
                                 [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
                                 
                                 // Don't back up
                                 // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-                                NSURL *const url = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
-                                [url setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+                                NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+                                [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
                             }
                         });
                         
