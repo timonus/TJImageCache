@@ -75,7 +75,7 @@ static NSString *_tj_imageCacheRootPath;
     // Attempt load from map table.
     
     if (!inMemoryImage) {
-        [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+        [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
             inMemoryImage = [mapTable objectForKey:urlString];
         } blockIsWriteOnly:NO];
         if (inMemoryImage) {
@@ -87,7 +87,7 @@ static NSString *_tj_imageCacheRootPath;
     // Check if there's an existing disk/network request running for this image.
     __block BOOL loadAsynchronously = NO;
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
-        [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
+        [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
             NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
             if (!delegatesForRequest) {
                 delegatesForRequest = [NSHashTable weakObjectsHashTable];
@@ -170,7 +170,7 @@ static NSString *_tj_imageCacheRootPath;
     }
     
     __block BOOL isImageInMapTable = NO;
-    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+    [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         isImageInMapTable = [mapTable objectForKey:urlString] != nil;
     } blockIsWriteOnly:NO];
     
@@ -207,7 +207,7 @@ static NSString *_tj_imageCacheRootPath;
 {
     [[self _cache] removeObjectForKey:urlString];
     NSString *const hash = [self hash:urlString];
-    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+    [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         [mapTable removeObjectForKey:hash];
         [mapTable removeObjectForKey:urlString];
     } blockIsWriteOnly:YES];
@@ -217,7 +217,7 @@ static NSString *_tj_imageCacheRootPath;
 + (void)dumpMemoryCache
 {
     [[self _cache] removeAllObjects];
-    [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+    [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         [mapTable removeAllObjects];
     } blockIsWriteOnly:YES];
 }
@@ -241,7 +241,7 @@ static NSString *_tj_imageCacheRootPath;
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
                 __block BOOL isInUse = NO;
-                [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+                [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                     isInUse = [mapTable objectForKey:file] != nil;
                 } blockIsWriteOnly:NO];
                 if (!isInUse && !block(file, lastAccess, createdDate)) {
@@ -295,7 +295,7 @@ static NSString *_tj_imageCacheRootPath;
 /// Keys are image URL strings, NOT hashes
 + (NSCache<NSString *, IMAGE_CLASS *> *)_cache
 {
-    static NSCache *cache = nil;
+    static NSCache<NSString *, IMAGE_CLASS *> *cache = nil;
     static dispatch_once_t token;
     
     dispatch_once(&token, ^{
@@ -309,9 +309,9 @@ static NSString *_tj_imageCacheRootPath;
 /// { image URL string -> image,
 ///   image URL string hash -> image }
 /// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
-+ (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *mapTable))block blockIsWriteOnly:(const BOOL)blockIsWriteOnly
++ (void)_mapTableWithBlock:(void (^)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable))block blockIsWriteOnly:(const BOOL)blockIsWriteOnly
 {
-    static NSMapTable *mapTable = nil;
+    static NSMapTable<NSString *, IMAGE_CLASS *> *mapTable = nil;
     static dispatch_once_t token;
     static dispatch_queue_t queue = nil;
     
@@ -332,9 +332,9 @@ static NSString *_tj_imageCacheRootPath;
 }
 
 /// Keys are image URL strings
-+ (void)_requestDelegatesWithBlock:(void (^)(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates))block
++ (void)_requestDelegatesWithBlock:(void (^)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))block
 {
-    static NSMutableDictionary<NSString *, NSHashTable *> *requests = nil;
+    static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests = nil;
     static dispatch_once_t token;
     static dispatch_queue_t queue = nil;
     
@@ -359,13 +359,13 @@ static NSString *_tj_imageCacheRootPath;
     }
     if (image) {
         [[self _cache] setObject:image forKey:urlString];
-        [self _mapTableWithBlock:^(NSMapTable *mapTable) {
+        [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
             [mapTable setObject:image forKey:hash];
             [mapTable setObject:image forKey:urlString];
         } blockIsWriteOnly:YES];
     }
     __block NSHashTable *delegatesForRequest = nil;
-    [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable *> *requestDelegates) {
+    [self _requestDelegatesWithBlock:^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
     }];

@@ -98,7 +98,7 @@ UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, 
 
 UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *opaqueBackgroundColor)
 {
-    static NSCache *cachedImages = nil;
+    static NSCache<NSNumber *, UIImage *> *cachedImages = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         cachedImages = [NSCache new];
