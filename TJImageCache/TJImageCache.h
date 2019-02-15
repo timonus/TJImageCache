@@ -5,7 +5,7 @@
 #import <UIKit/UIKit.h>
 #define IMAGE_CLASS UIImage
 
-typedef NS_ENUM(NSUInteger, TJImageCacheDepth) {
+typedef NS_CLOSED_ENUM(NSUInteger, TJImageCacheDepth) {
     TJImageCacheDepthMemory,
     TJImageCacheDepthDisk,
     TJImageCacheDepthNetwork
