@@ -112,14 +112,16 @@ static NSString *_tj_imageCacheRootPath;
         });
         dispatch_async(readQueue, ^{
             NSString *const hash = [self hash:urlString];
-            NSString *const path = [self _pathForHash:hash];
+            NSURL *const url = [NSURL URLWithString:urlString];
+            const BOOL isFileURL = url.isFileURL;
+            NSString *const path = isFileURL ? url.path : [self _pathForHash:hash];
             if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
                 [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
-            } else if (depth == TJImageCacheDepthNetwork) {
+            } else if (depth == TJImageCacheDepthNetwork && !isFileURL) {
                 static NSURLSession *session = nil;
                 static dispatch_once_t sessionOnceToken;
                 dispatch_once(&sessionOnceToken, ^{
@@ -128,7 +130,6 @@ static NSString *_tj_imageCacheRootPath;
                     session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                 });
                 
-                NSURL *const url = [NSURL URLWithString:urlString];
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     if (location && path) {
                         // Lazily generate the directory the first time it's written to if needed.
