@@ -8,7 +8,7 @@
 static NSString *_tj_imageCacheRootPath;
 
 static NSNumber *_tj_imageCacheBaseSize;
-static NSUInteger _tj_imageCacheDeltaSize;
+static long long _tj_imageCacheDeltaSize;
 
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
@@ -193,14 +193,14 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     return TJImageCacheDepthNetwork;
 }
 
-+ (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion
++ (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSUInteger fileSize = 0;
+        long long fileSize = 0;
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
         for (NSString *filename in enumerator) {
 #pragma unused(filename)
-            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] unsignedIntegerValue];
+            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] longLongValue];
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(fileSize);
@@ -219,7 +219,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         [mapTable removeObjectForKey:urlString];
     } blockIsWriteOnly:YES];
     NSString *const path = [self _pathForHash:hash];
-    const NSInteger fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
+    const long long fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
         [self _modifyDeltaSize:-fileSize];
     }
@@ -366,7 +366,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     pthread_mutex_unlock(&lock);
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress size:(const NSInteger)size
++ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress size:(const long long)size
 {
     IMAGE_CLASS *image = nil;
     if (path) {
@@ -493,26 +493,26 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     return _tj_imageCacheApproximateCacheSize;
 }
 
-+ (void)_setApproximateCacheSize:(const NSUInteger)cacheSize
++ (void)_setApproximateCacheSize:(const long long)cacheSize
 {
     static NSString *key = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         key = NSStringFromSelector(@selector(approximateCacheSize));
     });
-    if (cacheSize != _tj_imageCacheApproximateCacheSize.integerValue) {
+    if (cacheSize != _tj_imageCacheApproximateCacheSize.longLongValue) {
         [self willChangeValueForKey:key];
         _tj_imageCacheApproximateCacheSize = @(cacheSize);
         [self didChangeValueForKey:key];
     }
 }
 
-+ (void)_modifyDeltaSize:(const NSInteger)delta
++ (void)_modifyDeltaSize:(const long long)delta
 {
     // We don't track in-memory deltas unless a base size has been computed.
     if (_tj_imageCacheBaseSize != nil) {
         _tj_imageCacheDeltaSize += delta;
-        [self _setApproximateCacheSize:_tj_imageCacheBaseSize.unsignedIntegerValue + _tj_imageCacheDeltaSize];
+        [self _setApproximateCacheSize:_tj_imageCacheBaseSize.longLongValue + _tj_imageCacheDeltaSize];
     }
 }
 
