@@ -123,7 +123,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             NSString *const path = isFileURL ? url.path : [self _pathForHash:hash];
             if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
+                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress size:0];
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
@@ -156,11 +156,11 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
                     }
                     // Inform delegates about success or failure
-                    [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress];
+                    [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress size:response.expectedContentLength];
                 }] resume];
             } else {
                 // Inform delegates about failure
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:nil url:urlString hash:hash forceDecompress:forceDecompress];
+                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:nil url:urlString hash:hash forceDecompress:forceDecompress size:0];
             }
         });
     }
@@ -218,7 +218,11 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         [mapTable removeObjectForKey:hash];
         [mapTable removeObjectForKey:urlString];
     } blockIsWriteOnly:YES];
-    [[NSFileManager defaultManager] removeItemAtPath:[self _pathForHash:hash] error:nil];
+    NSString *const path = [self _pathForHash:hash];
+    const NSInteger fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
+    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
+        [self _modifyDeltaSize:-fileSize];
+    }
 }
 
 + (void)dumpMemoryCache
@@ -242,6 +246,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
+        NSInteger delta = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *attributes = [enumerator fileAttributes];
@@ -254,11 +259,17 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 if (!isInUse && !block(file, lastAccess, createdDate)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                     [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+                    delta -= [[attributes objectForKey:NSFileSize] unsignedIntegerValue];
                 }
             }
         }
         if (completionBlock) {
             completionBlock();
+        }
+        if (delta != 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self _modifyDeltaSize:delta];
+            });
         }
     });
 }
@@ -355,7 +366,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     pthread_mutex_unlock(&lock);
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
++ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress size:(const NSInteger)size
 {
     IMAGE_CLASS *image = nil;
     if (path) {
@@ -384,6 +395,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 [delegate didFailToGetImageAtURL:urlString];
             }
         }
+        [self _modifyDeltaSize:size];
     });
 }
 
