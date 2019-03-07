@@ -48,6 +48,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date;
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date;
 
++ (void)computeCacheSizeIfNeeded;
+/// Will be @c nil until @c +computeCacheSizeIfNeeded or one of the cache auditing methods is called once, then it will update automatically as the cache changes.
+/// Observe using KVO.
+@property (nonatomic, strong, readonly, class) NSNumber *approximateCacheSize;
+
 @end
 
 NS_ASSUME_NONNULL_END

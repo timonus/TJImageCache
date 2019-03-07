@@ -7,6 +7,11 @@
 
 static NSString *_tj_imageCacheRootPath;
 
+static NSNumber *_tj_imageCacheBaseSize;
+static NSUInteger _tj_imageCacheDeltaSize;
+
+static NSNumber *_tj_imageCacheApproximateCacheSize;
+
 @implementation TJImageCache
 
 #pragma mark - Configuration
@@ -459,6 +464,44 @@ static NSString *_tj_imageCacheRootPath;
     }
     
     return predrawnImage;
+}
+
++ (void)computeCacheSizeIfNeeded
+{
+    if (!_tj_imageCacheBaseSize) {
+        [self getDiskCacheSize:^(NSUInteger diskCacheSize) {
+            _tj_imageCacheBaseSize = @(diskCacheSize);
+            [self _setApproximateCacheSize:diskCacheSize];
+        }];
+    }
+}
+
++ (NSNumber *)approximateCacheSize
+{
+    return _tj_imageCacheApproximateCacheSize;
+}
+
++ (void)_setApproximateCacheSize:(const NSUInteger)cacheSize
+{
+    static NSString *key = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        key = NSStringFromSelector(@selector(approximateCacheSize));
+    });
+    if (cacheSize != _tj_imageCacheApproximateCacheSize.integerValue) {
+        [self willChangeValueForKey:key];
+        _tj_imageCacheApproximateCacheSize = @(cacheSize);
+        [self didChangeValueForKey:key];
+    }
+}
+
++ (void)_modifyDeltaSize:(const NSInteger)delta
+{
+    // We don't track in-memory deltas unless a base size has been computed.
+    if (_tj_imageCacheBaseSize != nil) {
+        _tj_imageCacheDeltaSize += delta;
+        [self _setApproximateCacheSize:_tj_imageCacheBaseSize.unsignedIntegerValue + _tj_imageCacheDeltaSize];
+    }
 }
 
 @end
