@@ -9,7 +9,6 @@ static NSString *_tj_imageCacheRootPath;
 
 static NSNumber *_tj_imageCacheBaseSize;
 static long long _tj_imageCacheDeltaSize;
-
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 @implementation TJImageCache
@@ -482,7 +481,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     return predrawnImage;
 }
 
-+ (void)computeCacheSizeIfNeeded
++ (void)computeDiskCacheSizeIfNeeded
 {
     if (!_tj_imageCacheBaseSize) {
         [self getDiskCacheSize:^(long long diskCacheSize) {
@@ -491,7 +490,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     }
 }
 
-+ (NSNumber *)approximateCacheSize
++ (NSNumber *)approximateDiskCacheSize
 {
     return _tj_imageCacheApproximateCacheSize;
 }
@@ -501,7 +500,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     static NSString *key = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        key = NSStringFromSelector(@selector(approximateCacheSize));
+        key = NSStringFromSelector(@selector(approximateDiskCacheSize));
     });
     if (cacheSize != _tj_imageCacheApproximateCacheSize.longLongValue) {
         [self willChangeValueForKey:key];
