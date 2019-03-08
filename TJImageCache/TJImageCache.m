@@ -204,6 +204,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(fileSize);
+            [self _setBaseCacheSize:fileSize];
         });
     });
 }
@@ -485,7 +486,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 {
     if (!_tj_imageCacheBaseSize) {
         [self getDiskCacheSize:^(long long diskCacheSize) {
-            [self _setBaseCacheSize:diskCacheSize];
+            // intentional no-op, cache size is set as a side effect of +getDiskCacheSize: running.
         }];
     }
 }
