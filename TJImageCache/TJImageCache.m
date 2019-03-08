@@ -246,7 +246,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
-        NSInteger delta = 0;
+        long long fileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *attributes = [enumerator fileAttributes];
@@ -256,21 +256,24 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                     isInUse = [mapTable objectForKey:file] != nil;
                 } blockIsWriteOnly:NO];
+                BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
-                    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-                    delta -= [[attributes objectForKey:NSFileSize] unsignedIntegerValue];
+                    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
+                        wasRemoved = YES;
+                    }
+                }
+                if (!wasRemoved) {
+                    fileSize += [[attributes objectForKey:NSFileSize] longLongValue];
                 }
             }
         }
-        if (completionBlock) {
-            completionBlock();
-        }
-        if (delta != 0) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self _modifyDeltaSize:delta];
-            });
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completionBlock) {
+                completionBlock();
+            }
+            [self _setBaseCacheSize:fileSize];
+        });
     });
 }
 
@@ -481,9 +484,8 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 + (void)computeCacheSizeIfNeeded
 {
     if (!_tj_imageCacheBaseSize) {
-        [self getDiskCacheSize:^(NSUInteger diskCacheSize) {
-            _tj_imageCacheBaseSize = @(diskCacheSize);
-            [self _setApproximateCacheSize:diskCacheSize];
+        [self getDiskCacheSize:^(long long diskCacheSize) {
+            [self _setBaseCacheSize:diskCacheSize];
         }];
     }
 }
@@ -505,6 +507,13 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         _tj_imageCacheApproximateCacheSize = @(cacheSize);
         [self didChangeValueForKey:key];
     }
+}
+
++ (void)_setBaseCacheSize:(const long long)diskCacheSize
+{
+    _tj_imageCacheBaseSize = @(diskCacheSize);
+    _tj_imageCacheDeltaSize = 0;
+    [self _setApproximateCacheSize:diskCacheSize];
 }
 
 + (void)_modifyDeltaSize:(const long long)delta
