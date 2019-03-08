@@ -3,6 +3,7 @@
 
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
+#import <pthread.h>
 
 static NSString *_tj_imageCacheRootPath;
 
@@ -337,16 +338,16 @@ static NSString *_tj_imageCacheRootPath;
 {
     static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests = nil;
     static dispatch_once_t token;
-    static dispatch_queue_t queue = nil;
+    static pthread_mutex_t lock;
     
     dispatch_once(&token, ^{
         requests = [[NSMutableDictionary alloc] init];
-        queue = dispatch_queue_create("TJImageCache delegate queue", DISPATCH_QUEUE_SERIAL);
+        pthread_mutex_init(&lock, nil);
     });
     
-    dispatch_sync(queue, ^{
-        block(requests);
-    });
+    pthread_mutex_lock(&lock);
+    block(requests);
+    pthread_mutex_unlock(&lock);
 }
 
 + (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress
