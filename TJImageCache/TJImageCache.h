@@ -41,12 +41,17 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)removeImageAtURL:(NSString *const)url;
 + (void)dumpDiskCache;
 + (void)dumpMemoryCache;
-+ (void)getDiskCacheSize:(void (^const)(NSUInteger diskCacheSize))completion;
++ (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion;
 
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^_Nullable)(void))completionBlock; // return YES to preserve the image, return NO to delete it
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block;
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date;
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date;
+
++ (void)computeDiskCacheSizeIfNeeded;
+/// Will be @c nil until @c +computeDiskCacheSizeIfNeeded, +getDiskCacheSize:, or one of the cache auditing methods is called once, then it will update automatically as the cache changes.
+/// Observe using KVO.
+@property (nonatomic, strong, readonly, class) NSNumber *approximateDiskCacheSize;
 
 @end
 
