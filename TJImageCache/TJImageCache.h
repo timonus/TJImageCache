@@ -49,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date;
 
 + (void)computeDiskCacheSizeIfNeeded;
-/// Will be @c nil until @c +computeDiskCacheSizeIfNeeded, +getDiskCacheSize:, or one of the cache auditing methods is called once, then it will update automatically as the cache changes.
+/// Will be @c nil until @c +computeDiskCacheSizeIfNeeded, @c +getDiskCacheSize:, or one of the cache auditing methods is called once, then it will update automatically as the cache changes.
 /// Observe using KVO.
 @property (nonatomic, strong, readonly, class) NSNumber *approximateDiskCacheSize;
 
