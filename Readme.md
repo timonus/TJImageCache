@@ -29,6 +29,16 @@ To implement your own cache auditing policy, you can use `+auditCacheWithBlock:c
 
 There are two convenience methods you can use to remove images based off of age, `+auditCacheRemovingFilesOlderThanDate:` and `+auditCacheRemovingFilesLastAccessedBeforeDate:`. Using these will remove images older than a certain date or images that were last accessed before a certain date respectively.
 
+## Sizing
+
+`TJImageCache` has a handy feature that automatically tracks changes in its disk cache size. You can observe this using KVO on the `approximateDiskCacheSize` property. This property will be `nil` initially, but it is populated as a result of any of the three following method calls and updated from then on.
+
+- `+auditCache...`
+- `+computeDiskCacheSizeIfNeeded`
+- `+getDiskCacheSize:`
+
+Most apps will call one of the auditing methods to clean up their cache, which means automatic size tracking will usually happen for free with no additional method calls. If you need a simple, transactional way of getting the size of the cache you can use `+getDiskCacheSize:`.
+
 # Other Notes
 
 - `TJImageCache` plays quite nicely with [OLImageView](https://github.com/ondalabs/OLImageView) if you replace `IMAGE_CLASS` with `OLImage` in [TJImageCache.h](https://github.com/tijoinc/TJImageCache/blob/master/TJImageCache.h#L4). This allows you to load and play animated GIFs.
