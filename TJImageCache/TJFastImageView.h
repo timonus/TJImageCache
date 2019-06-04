@@ -13,6 +13,8 @@
 
 @property (nonatomic, copy) NSString *imageURLString;
 @property (nonatomic, assign) CGFloat imageCornerRadius;
+@property (nonatomic, strong) UIColor *strokeColor;
+@property (nonatomic, strong) UIColor *placeholderBackgroundColor;
 @property (nonatomic, strong) UIColor *imageOpaqueBackgroundColor;
 
 @end

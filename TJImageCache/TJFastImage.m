@@ -9,25 +9,27 @@
 #import "TJFastImage.h"
 
 // Must be thread safe
-UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), const CGSize size, UIColor *const opaqueBackgroundColor);
-UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), const CGSize size, UIColor *const opaqueBackgroundColor)
+UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context, UIBezierPath *clippingPath), const CGSize size, const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const opaqueBackgroundColor);
+UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context, UIBezierPath *clippingPath), const CGSize size, const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const opaqueBackgroundColor)
 {
     UIImage *image = nil;
     const BOOL opaque = opaqueBackgroundColor != nil;
     if (opaque) {
-        drawBlock = ^(CGContextRef context) {
+        drawBlock = ^(CGContextRef context, UIBezierPath *clippingPath) {
             [opaqueBackgroundColor setFill];
             CGContextFillRect(context, (CGRect){CGPointZero, size});
-            drawBlock(context);
+            drawBlock(context, clippingPath);
         };
     }
 #if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0
     if (@available(iOS 10.0, *)) {
 #endif
+        static CGFloat scale;
         static UIGraphicsImageRendererFormat *transparentFormat = nil;
         static UIGraphicsImageRendererFormat *opaqueFormat = nil;
         static dispatch_once_t onceToken;
         dispatch_once(&onceToken, ^{
+            scale = [[UIScreen mainScreen] scale];
             transparentFormat = [UIGraphicsImageRendererFormat new];
 #if defined(__IPHONE_12_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0
             // We assume the images we receive don't contain extended range colors.
@@ -53,8 +55,14 @@ UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), c
             format = transparentFormat;
         }
         UIGraphicsImageRenderer *const renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
+        const CGRect rect = (CGRect){CGPointZero, size};
+        UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
         image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
-            drawBlock(rendererContext.CGContext);
+            const CGContextRef context = rendererContext.CGContext;
+            drawBlock(context, clippingPath);
+            [strokeColor setStroke];
+            CGContextSetLineWidth(context, MIN(1.0 / scale, 0.5));
+            [clippingPath stroke];
         }];
 #if defined(__IPHONE_10_0) && __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0
     } else {
@@ -68,14 +76,12 @@ UIImage *drawImageWithBlockSizeOpaque(void (^drawBlock)(CGContextRef context), c
 }
 
 
-UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *opaqueBackgroundColor)
+UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const opaqueBackgroundColor)
 {
     UIImage *drawnImage = nil;
     if (size.width > 0.0 && size.height > 0.0) {
         const CGRect rect = (CGRect){CGPointZero, size};
-        const CGFloat scale = [UIScreen mainScreen].scale;
-        drawnImage = drawImageWithBlockSizeOpaque(^(CGContextRef context) {
-            UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
+        drawnImage = drawImageWithBlockSizeOpaque(^(CGContextRef context, UIBezierPath *clippingPath) {
             [clippingPath addClip]; // http://stackoverflow.com/a/13870097
             CGRect drawRect;
             if (rect.size.width / rect.size.height > image.size.width / image.size.height) {
@@ -88,15 +94,12 @@ UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, 
                 drawRect = CGRectMake(floor((rect.size.width - scaledWidth) / 2.0), 0.0, scaledWidth, rect.size.height);
             }
             [image drawInRect:drawRect];
-            [[UIColor lightGrayColor] setStroke];
-            CGContextSetLineWidth(context, MIN(1.0 / scale, 0.5));
-            [clippingPath stroke];
-        }, size, opaqueBackgroundColor);
+        }, size, cornerRadius, strokeColor, opaqueBackgroundColor);
     }
     return drawnImage;
 }
 
-UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *opaqueBackgroundColor)
+UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const placeholderBackgroundColor, UIColor *const opaqueBackgroundColor)
 {
     static NSCache<NSNumber *, UIImage *> *cachedImages = nil;
     static dispatch_once_t onceToken;
@@ -104,18 +107,16 @@ UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *o
         cachedImages = [NSCache new];
     });
     
-    NSNumber *const key = @((NSUInteger)cornerRadius ^ [opaqueBackgroundColor hash]);
+    NSNumber *const key = @((NSUInteger)cornerRadius ^ [strokeColor hash] ^ [placeholderBackgroundColor hash] ^ [opaqueBackgroundColor hash]);
     UIImage *image = [cachedImages objectForKey:key];
     if (!image) {
         const CGFloat sideLength = cornerRadius * 2.0 + 1.0;
         const CGSize size = (CGSize){sideLength, sideLength};
         
-        image = drawImageWithBlockSizeOpaque(^(CGContextRef context) {
-            const CGRect rect = (CGRect){CGPointZero, size};
-            UIBezierPath *const clippingPath = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
-            [[UIColor lightGrayColor] setFill];
+        image = drawImageWithBlockSizeOpaque(^(CGContextRef context, UIBezierPath *clippingPath) {
+            [placeholderBackgroundColor setFill];
             [clippingPath fill];
-        }, size, opaqueBackgroundColor);
+        }, size, cornerRadius, strokeColor, opaqueBackgroundColor);
         image = [image resizableImageWithCapInsets:(UIEdgeInsets){cornerRadius, cornerRadius, cornerRadius, cornerRadius}];
         [cachedImages setObject:image forKey:key];
     }

@@ -22,6 +22,8 @@
 {
     if (self = [super initWithFrame:frame]) {
         [super setBackgroundColor:[UIColor clearColor]];
+        _strokeColor = [UIColor lightGrayColor];
+        _placeholderBackgroundColor = [UIColor lightGrayColor];
         
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(invertColorsStatusDidChange:)
@@ -53,6 +55,22 @@
 {
     if (imageCornerRadius != _imageCornerRadius) {
         _imageCornerRadius = imageCornerRadius;
+        [self setNeedsUpdateImage];
+    }
+}
+
+- (void)setPlaceholderBackgroundColor:(UIColor *)placeholderBackgroundColor
+{
+    if (placeholderBackgroundColor != _placeholderBackgroundColor && ![placeholderBackgroundColor isEqual:_placeholderBackgroundColor]) {
+        _placeholderBackgroundColor = placeholderBackgroundColor;
+        [self setNeedsUpdateImage];
+    }
+}
+
+- (void)setStrokeColor:(UIColor *)strokeColor
+{
+    if (strokeColor != _strokeColor && ![strokeColor isEqual:_strokeColor]) {
+        _strokeColor = strokeColor;
         [self setNeedsUpdateImage];
     }
 }
@@ -112,19 +130,20 @@
     } else {
         opaqueBackgroundColor = self.imageOpaqueBackgroundColor;
     }
-    self.image = placeholderImageWithCornerRadius(self.imageCornerRadius, opaqueBackgroundColor);
+    self.image = placeholderImageWithCornerRadius(self.imageCornerRadius, self.strokeColor, self.placeholderBackgroundColor, opaqueBackgroundColor);
     
     UIImage *const image = self.loadedImage;
     if (image) {
         NSString *const imageURLString = self.imageURLString;
         const CGSize size = self.bounds.size;
         const CGFloat cornerRadius = self.imageCornerRadius;
+        UIColor *const strokeColor = self.strokeColor;
         
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-            UIImage *const drawnImage = imageForImageSizeCornerRadius(image, size, cornerRadius, opaqueBackgroundColor);
+            UIImage *const drawnImage = imageForImageSizeCornerRadius(image, size, cornerRadius, strokeColor, opaqueBackgroundColor);
             dispatch_async(dispatch_get_main_queue(), ^{
                 /* These can mutate while scrolling quickly. We only want to accept the asynchronously drawn image if it matches our expectations. */
-                if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius) {
+                if ([imageURLString isEqualToString:self.imageURLString] && CGSizeEqualToSize(size, self.bounds.size) && cornerRadius == self.imageCornerRadius && [strokeColor isEqual:self.strokeColor]) {
                     self.image = drawnImage;
                 }
             });

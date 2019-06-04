@@ -12,7 +12,7 @@
 #define TJFastImage_h
 
 // Must be thread safe
-UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *opaqueBackgroundColor);
-UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *opaqueBackgroundColor);
+UIImage *imageForImageSizeCornerRadius(UIImage *const image, const CGSize size, const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const opaqueBackgroundColor);
+UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *const strokeColor, UIColor *const placeholderBackgroundColor, UIColor *const opaqueBackgroundColor);
 
 #endif /* TJFastImage_h */
