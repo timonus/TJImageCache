@@ -107,7 +107,13 @@ UIImage *placeholderImageWithCornerRadius(const CGFloat cornerRadius, UIColor *c
         cachedImages = [NSCache new];
     });
     
-    NSNumber *const key = @((NSUInteger)cornerRadius ^ [strokeColor hash] ^ [placeholderBackgroundColor hash] ^ [opaqueBackgroundColor hash]);
+    NSUInteger hash = cornerRadius;
+    hash = hash * 31 + [strokeColor hash];
+    hash = hash * 31 + [placeholderBackgroundColor hash];
+    if (opaqueBackgroundColor) {
+        hash = hash * 31 + [opaqueBackgroundColor hash];
+    }
+    NSNumber *const key = @(hash);
     UIImage *image = [cachedImages objectForKey:key];
     if (!image) {
         const CGFloat sideLength = cornerRadius * 2.0 + 1.0;
