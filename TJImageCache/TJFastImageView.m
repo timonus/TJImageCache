@@ -63,7 +63,9 @@
 {
     if (placeholderBackgroundColor != _placeholderBackgroundColor && ![placeholderBackgroundColor isEqual:_placeholderBackgroundColor]) {
         _placeholderBackgroundColor = placeholderBackgroundColor;
-        [self setNeedsUpdateImage];
+        if (!self.loadedImage) {
+            [self setNeedsUpdateImage];
+        }
     }
 }
 
