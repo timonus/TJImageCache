@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)configureWithRootPath:(NSString *const)rootPath;
 
 + (NSString *)hash:(NSString *)string;
++ (NSString *)pathForURLString:(NSString *const)urlString;
 
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress;
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate;

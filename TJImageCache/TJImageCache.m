@@ -45,6 +45,11 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     return ret;
 }
 
++ (NSString *)pathForURLString:(NSString *const)urlString
+{
+    return [self _pathForHash:[self hash:urlString]];
+}
+
 #pragma mark - Image Fetching
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
