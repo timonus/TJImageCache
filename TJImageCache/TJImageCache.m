@@ -118,7 +118,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             // NOTE: There could be a perf improvement to be had here using dispatch barriers (https://bit.ly/2FvNNff).
             // The readQueue could be made concurrent, and and writes would have to be added to a dispatch_barrier_sync call like so https://db.tt/1qRAxNvejH (changes marked with *'s)
             // My fear in doing that is that a bunch of threads will be spawned and blocked on I/O.
-            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL);
+            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         });
         dispatch_async(readQueue, ^{
             NSString *const hash = [self hash:urlString];
