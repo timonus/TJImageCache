@@ -240,36 +240,37 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 + (void)dumpDiskCache
 {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
         return NO;
     }];
 }
 
 #pragma mark - Cache Auditing
 
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block completionBlock:(void (^)(void))completionBlock
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(void (^)(void))completionBlock
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
-        long long fileSize = 0;
+        long long totalFileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *attributes = [enumerator fileAttributes];
                 NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
+                long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
                 __block BOOL isInUse = NO;
                 [self _mapTableWithBlock:^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                     isInUse = [mapTable objectForKey:file] != nil;
                 } blockIsWriteOnly:NO];
                 BOOL wasRemoved = NO;
-                if (!isInUse && !block(file, lastAccess, createdDate)) {
+                if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
                     NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
                     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
                         wasRemoved = YES;
                     }
                 }
                 if (!wasRemoved) {
-                    fileSize += [[attributes objectForKey:NSFileSize] longLongValue];
+                    totalFileSize += fileSize;
                 }
             }
         }
@@ -277,26 +278,26 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             if (completionBlock) {
                 completionBlock();
             }
-            [self _setBaseCacheSize:fileSize];
+            [self _setBaseCacheSize:totalFileSize];
         });
     });
 }
 
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate))block
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block
 {
     [self auditCacheWithBlock:block completionBlock:nil];
 }
 
 + (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
 {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
         return ([createdDate compare:date] != NSOrderedAscending);
     }];
 }
 
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
 {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
         return ([lastAccess compare:date] != NSOrderedAscending);
     }];
 }
