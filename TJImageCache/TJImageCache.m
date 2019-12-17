@@ -47,7 +47,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 + (NSString *)pathForURLString:(NSString *const)urlString
 {
-    return [self _pathForHash:[self hash:urlString]];
+    return _pathForHash([self hash:urlString]);
 }
 
 #pragma mark - Image Fetching
@@ -124,7 +124,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             NSString *const hash = [self hash:urlString];
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
-            NSString *const path = isFileURL ? url.path : [self _pathForHash:hash];
+            NSString *const path = isFileURL ? url.path : _pathForHash(hash);
             if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
                 [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress size:0];
@@ -190,7 +190,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     }
     
     NSString *const hash = [self hash:urlString];
-    if ([[NSFileManager defaultManager] fileExistsAtPath:[self _pathForHash:hash]]) {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:_pathForHash(hash)]) {
         return TJImageCacheDepthDisk;
     }
     
@@ -201,7 +201,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         long long fileSize = 0;
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
         for (NSString *filename in enumerator) {
 #pragma unused(filename)
             fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] longLongValue];
@@ -223,7 +223,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         [mapTable removeObjectForKey:hash];
         [mapTable removeObjectForKey:urlString];
     }, YES);
-    NSString *const path = [self _pathForHash:hash];
+    NSString *const path = _pathForHash(hash);
     const long long fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
         _modifyDeltaSize(-fileSize);
@@ -250,7 +250,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(void (^)(void))completionBlock
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:[self _rootPath]];
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
         long long totalFileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
@@ -264,7 +264,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 }, NO);
                 BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
-                    NSString *path = [[self _rootPath] stringByAppendingPathComponent:file];
+                    NSString *path = [_rootPath() stringByAppendingPathComponent:file];
                     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
                         wasRemoved = YES;
                     }
@@ -304,15 +304,15 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 #pragma mark - Private
 
-+ (NSString *)_rootPath
+static NSString *_rootPath(void)
 {
-    NSAssert(_tj_imageCacheRootPath != nil, @"You should configure %@'s root path before attempting to use it.", NSStringFromClass([self class]));
+    NSCAssert(_tj_imageCacheRootPath != nil, @"You should configure %@'s root path before attempting to use it.", NSStringFromClass([TJImageCache class]));
     return _tj_imageCacheRootPath;
 }
 
-+ (NSString *)_pathForHash:(NSString *const)hash
+static NSString *_pathForHash(NSString *const hash)
 {
-    NSString *path = [self _rootPath];
+    NSString *path = _rootPath();
     if (hash) {
         path = [path stringByAppendingPathComponent:hash];
     }
