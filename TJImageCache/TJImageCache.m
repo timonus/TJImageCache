@@ -127,7 +127,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
             if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
                 // Inform delegates about success
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress size:0];
+                _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
@@ -141,6 +141,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 });
                 
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                    long long size = 0;
                     if (location && path) {
                         // Lazily generate the directory the first time it's written to if needed.
                         static dispatch_once_t rootDirectoryOnceToken;
@@ -158,13 +159,14 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         
                         // Move resulting image into place.
                         [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
+                        size = response.expectedContentLength;
                     }
                     // Inform delegates about success or failure
-                    [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:path url:urlString hash:hash forceDecompress:forceDecompress size:response.expectedContentLength];
+                    _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, size);
                 }] resume];
             } else {
                 // Inform delegates about failure
-                [self _tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:nil url:urlString hash:hash forceDecompress:forceDecompress size:0];
+                _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
             }
         });
     }
@@ -375,7 +377,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
     pthread_mutex_unlock(&lock);
 }
 
-+ (void)_tryUpdateMemoryCacheAndCallDelegatesForImageAtPath:(NSString *const)path url:(NSString *const)urlString hash:(NSString *const)hash forceDecompress:(const BOOL)forceDecompress size:(const long long)size
+static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
 {
     IMAGE_CLASS *image = nil;
     if (path) {
