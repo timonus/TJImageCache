@@ -208,7 +208,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(fileSize);
-            [self _setBaseCacheSize:fileSize];
+            _setBaseCacheSize(fileSize);
         });
     });
 }
@@ -226,7 +226,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     NSString *const path = [self _pathForHash:hash];
     const long long fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
-        [self _modifyDeltaSize:-fileSize];
+        _modifyDeltaSize(-fileSize);
     }
 }
 
@@ -278,7 +278,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             if (completionBlock) {
                 completionBlock();
             }
-            [self _setBaseCacheSize:totalFileSize];
+            _setBaseCacheSize(totalFileSize);
         });
     });
 }
@@ -404,7 +404,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
                 [delegate didFailToGetImageAtURL:urlString];
             }
         }
-        [self _modifyDeltaSize:size];
+        _modifyDeltaSize(size);
     });
 }
 
@@ -501,7 +501,7 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
     return _tj_imageCacheApproximateCacheSize;
 }
 
-+ (void)_setApproximateCacheSize:(const long long)cacheSize
+static void _setApproximateCacheSize(const long long cacheSize)
 {
     static NSString *key = nil;
     static dispatch_once_t onceToken;
@@ -509,25 +509,25 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
         key = NSStringFromSelector(@selector(approximateDiskCacheSize));
     });
     if (cacheSize != _tj_imageCacheApproximateCacheSize.longLongValue) {
-        [self willChangeValueForKey:key];
+        [TJImageCache willChangeValueForKey:key];
         _tj_imageCacheApproximateCacheSize = @(cacheSize);
-        [self didChangeValueForKey:key];
+        [TJImageCache didChangeValueForKey:key];
     }
 }
 
-+ (void)_setBaseCacheSize:(const long long)diskCacheSize
+static void _setBaseCacheSize(const long long diskCacheSize)
 {
     _tj_imageCacheBaseSize = @(diskCacheSize);
     _tj_imageCacheDeltaSize = 0;
-    [self _setApproximateCacheSize:diskCacheSize];
+    _setApproximateCacheSize(diskCacheSize);
 }
 
-+ (void)_modifyDeltaSize:(const long long)delta
+static void _modifyDeltaSize(const long long delta)
 {
     // We don't track in-memory deltas unless a base size has been computed.
     if (_tj_imageCacheBaseSize != nil) {
         _tj_imageCacheDeltaSize += delta;
-        [self _setApproximateCacheSize:_tj_imageCacheBaseSize.longLongValue + _tj_imageCacheDeltaSize];
+        _setApproximateCacheSize(_tj_imageCacheBaseSize.longLongValue + _tj_imageCacheDeltaSize);
     }
 }
 
