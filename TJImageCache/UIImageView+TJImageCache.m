@@ -49,7 +49,7 @@ static const char *kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
     NSString *const currentImageURLString = self.tj_imageURLString;
     if (imageURLString != currentImageURLString && ![imageURLString isEqualToString:currentImageURLString]) {
         objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
-        self.image = [TJImageCache imageAtURL:imageURLString delegate:self];
+        self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self forceDecompress:forceDecompress];
     }
 
 }
