@@ -54,17 +54,17 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil forceDecompress:NO];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth
 {
-    return [self imageAtURL:urlString depth:depth delegate:nil];
+    return [self imageAtURL:urlString depth:depth delegate:nil forceDecompress:NO];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate forceDecompress:NO];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
