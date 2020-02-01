@@ -20,7 +20,8 @@ In the event that the image is already in memory, each of these methods returns 
 TJImageCache comes with some convenience views / categories for working directly with views. There's a few that I've built for different purposes over time.
 
 - `UIImageView+TJImageCache` is a category that adds remote image loading methods to `UIImageView`. It's a simple drop-in solution.
-- `TJFastImageView` is a performance-tuned image view subclass that rounds its contents and adds a stroke around their border off the main thread. This was originally written to make [Opener](http://www.opener.link)'s app icon rendering buttery smooth. Might be a little heavy handed for everyday use. (There's also a `TJFastImageButton` class that has similar innards but for a `UIButton` that I was building for another app, but haven't touched in a long time. Your mileage may vary with that.)
+- `TJProgressiveImageView` allows you to specify more than one image to load progressively. The image at index 0 is always loaded with max depth = network, and secondary images are loaded opportunistically with a depth you provide ("disk" depth recommended).
+- `TJFastImageView` (Deprecated) is a performance-tuned image view subclass that rounds its contents and adds a stroke around their border off the main thread. This was originally written to make [Opener](http://www.opener.link)'s app icon rendering buttery smooth. Might be a little heavy handed for everyday use. (There's also a `TJFastImageButton` class that has similar innards but for a `UIButton` that I was building for another app, but haven't touched in a long time. Your mileage may vary with that.)
 - `TJImageView` is the oldest convenience class this library provides. It may not be super performant, but is also good for general use. It has some niceties like a background color while the image is loading and a fade in animation once it loads.
 
 ## Auditing
