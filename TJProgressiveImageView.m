@@ -7,7 +7,6 @@
 //
 
 #import "TJProgressiveImageView.h"
-#import "TJImageCache.h"
 
 @interface TJProgressiveImageView () <TJImageCacheDelegate>
 
@@ -27,6 +26,11 @@
 
 - (void)setImageURLStrings:(NSOrderedSet<NSString *> *)imageURLStrings
 {
+    [self setImageURLStrings:imageURLStrings secondaryImageDepth:TJImageCacheDepthDisk];
+}
+
+- (void)setImageURLStrings:(NSOrderedSet<NSString *> * _Nullable)imageURLStrings secondaryImageDepth:(const TJImageCacheDepth)secondaryImageDepth
+{
     if (imageURLStrings != _imageURLStrings) {
         NSString *const priorImageURLString = self.currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:self.currentImageURLStringIndex] : nil;
         _imageURLStrings = imageURLStrings;
@@ -38,8 +42,8 @@
                     // Don't attempt to load images beyond the best one we already have.
                     *stop = YES;
                 } else {
-                    // Load image 0 from network, all others can come from disk.
-                    const TJImageCacheDepth depth = idx == 0 ? TJImageCacheDepthNetwork : TJImageCacheDepthDisk;
+                    // Load image 0 from network, all others loaded at secondaryImageDepth.
+                    const TJImageCacheDepth depth = idx == 0 ? TJImageCacheDepthNetwork : secondaryImageDepth;
                     UIImage *const image = [TJImageCache imageAtURL:urlString depth:depth delegate:self forceDecompress:YES];
                     if (image) {
                         self.currentImageURLStringIndex = idx;
