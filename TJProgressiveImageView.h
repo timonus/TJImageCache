@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface TJProgressiveImageView : UIImageView
 
-@property (nonatomic, strong, nullable) NSOrderedSet<NSString *> *imageURLStrings;
+@property (nonatomic, nullable) NSOrderedSet<NSString *> *imageURLStrings;
 
 - (void)setImageURLStrings:(NSOrderedSet<NSString *> * _Nullable)imageURLStrings secondaryImageDepth:(const TJImageCacheDepth)secondaryImageDepth;
 

@@ -10,7 +10,7 @@
 
 @interface TJProgressiveImageView () <TJImageCacheDelegate>
 
-@property (nonatomic, assign) NSInteger currentImageURLStringIndex;
+@property (nonatomic) NSInteger currentImageURLStringIndex;
 
 @end
 
