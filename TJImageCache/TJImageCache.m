@@ -141,6 +141,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 });
                 
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                    BOOL success;
                     if (location) {
                         // Lazily generate the directory the first time it's written to if needed.
                         static dispatch_once_t rootDirectoryOnceToken;
@@ -157,10 +158,14 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         });
                         
                         // Move resulting image into place.
-                        [[NSFileManager defaultManager] moveItemAtPath:location.path toPath:path error:nil];
-                        const long long size = response.expectedContentLength;
+                        success = [[NSFileManager defaultManager] moveItemAtPath:location.path toPath:path error:nil];
+                    } else {
+                        success = NO;
+                    }
+                    
+                    if (success) {
                         // Inform delegates about success
-                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, size);
+                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
                     } else {
                         // Inform delegates about failure
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
