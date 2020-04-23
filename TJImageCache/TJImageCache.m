@@ -131,7 +131,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
                 // Update last access date
                 [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
-            } else if (depth == TJImageCacheDepthNetwork && !isFileURL) {
+            } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                 static NSURLSession *session = nil;
                 static dispatch_once_t sessionOnceToken;
                 dispatch_once(&sessionOnceToken, ^{
@@ -141,8 +141,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 });
                 
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                    long long size = 0;
-                    if (location && path) {
+                    if (location) {
                         // Lazily generate the directory the first time it's written to if needed.
                         static dispatch_once_t rootDirectoryOnceToken;
                         dispatch_once(&rootDirectoryOnceToken, ^{
@@ -159,10 +158,13 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         
                         // Move resulting image into place.
                         [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
-                        size = response.expectedContentLength;
+                        const long long size = response.expectedContentLength;
+                        // Inform delegates about success
+                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, size);
+                    } else {
+                        // Inform delegates about failure
+                        _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
                     }
-                    // Inform delegates about success or failure
-                    _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, size);
                 }] resume];
             } else {
                 // Inform delegates about failure
