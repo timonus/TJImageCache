@@ -157,7 +157,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         });
                         
                         // Move resulting image into place.
-                        [[NSFileManager defaultManager] moveItemAtURL:location toURL:[[NSURL alloc] initFileURLWithPath:path isDirectory:NO] error:nil];
+                        [[NSFileManager defaultManager] moveItemAtPath:location.path toPath:path error:nil];
                         const long long size = response.expectedContentLength;
                         // Inform delegates about success
                         _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, size);
