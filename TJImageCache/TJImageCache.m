@@ -141,8 +141,27 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                 });
                 
                 [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                    BOOL validToProcess = location != nil;
+                    if (validToProcess) {
+                        BOOL validContentType;
+                        if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+                            NSString *contentType;
+                            static NSString *const kContentTypeResponseHeaderKey = @"Content-Type";
+                            if (@available(iOS 13.0, *)) {
+                                // -valueForHTTPHeaderField: is more "correct" since it's case-insensitive, however it's only available in iOS 13+.
+                                contentType = [(NSHTTPURLResponse *)response valueForHTTPHeaderField:kContentTypeResponseHeaderKey];
+                            } else {
+                                contentType = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:kContentTypeResponseHeaderKey];
+                            }
+                            validContentType = [contentType hasPrefix:@"image/"];
+                        } else {
+                            validContentType = NO;
+                        }
+                        validToProcess = validContentType;
+                    }
+                    
                     BOOL success;
-                    if (location) {
+                    if (validToProcess) {
                         // Lazily generate the directory the first time it's written to if needed.
                         static dispatch_once_t rootDirectoryOnceToken;
                         dispatch_once(&rootDirectoryOnceToken, ^{
