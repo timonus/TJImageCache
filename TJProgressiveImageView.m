@@ -60,6 +60,17 @@
     }
 }
 
+- (void)cancelImageLoads
+{
+    [self.imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull urlString, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx < self.currentImageURLStringIndex || self.currentImageURLStringIndex == NSNotFound) {
+            [TJImageCache cancelImageLoadForURL:urlString delegate:self];
+        } else {
+            *stop = YES;
+        }
+    }];
+}
+
 #pragma mark - TJImageCacheDelegate
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url
