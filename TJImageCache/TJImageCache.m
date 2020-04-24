@@ -461,15 +461,10 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
     
     // "In iOS 4.0 and later, and OS X v10.6 and later, you can pass NULL if you want Quartz to allocate memory for the bitmap." (source: docs)
     void *data = NULL;
-    size_t width = imageToPredraw.size.width;
-    size_t height = imageToPredraw.size.height;
+    const size_t width = imageToPredraw.size.width;
     static const size_t bitsPerComponent = CHAR_BIT;
     
-    size_t bitsPerPixel = (bitsPerComponent * numberOfComponents);
-    size_t bytesPerPixel = (bitsPerPixel / 8);
-    size_t bytesPerRow = (bytesPerPixel * width);
-    
-    CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault;
+    const size_t bytesPerRow = (((bitsPerComponent * numberOfComponents) / 8) * width);
     
     CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(imageToPredraw.CGImage);
     // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
@@ -488,27 +483,27 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
         alphaInfo = kCGImageAlphaNoneSkipLast;
     }
     // "The constants for specifying the alpha channel information are declared with the `CGImageAlphaInfo` type but can be passed to this parameter safely." (source: docs)
-    bitmapInfo |= alphaInfo;
+    const CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault | alphaInfo;
     
     // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
     // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
-    CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
+    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, imageToPredraw.size.height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
     // Early return on failure!
     if (!bitmapContextRef) {
-        NSLog(@"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, bitsPerComponent, bytesPerRow, imageToPredraw);
+        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, (size_t)imageToPredraw.size.height, bitsPerComponent, bytesPerRow, imageToPredraw);
         return imageToPredraw;
     }
     
     // Draw image in bitmap context and create image by preserving receiver's properties.
     CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, imageToPredraw.size.width, imageToPredraw.size.height), imageToPredraw.CGImage);
-    CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
+    const CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
     IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef scale:imageToPredraw.scale orientation:imageToPredraw.imageOrientation];
     CGImageRelease(predrawnImageRef);
     CGContextRelease(bitmapContextRef);
     
     // Early return on failure!
     if (!predrawnImage) {
-        NSLog(@"Failed to `imageWithCGImage:scale:orientation:` with image ref %@ created with color space %@ and bitmap context %@ and properties and properties (scale: %f orientation: %ld) for image %@", predrawnImageRef, colorSpaceDeviceRGBRef, bitmapContextRef, imageToPredraw.scale, (long)imageToPredraw.imageOrientation, imageToPredraw);
+        NSCAssert(NO, @"Failed to `imageWithCGImage:scale:orientation:` with image ref %@ created with color space %@ and bitmap context %@ and properties and properties (scale: %f orientation: %ld) for image %@", predrawnImageRef, colorSpaceDeviceRGBRef, bitmapContextRef, imageToPredraw.scale, (long)imageToPredraw.imageOrientation, imageToPredraw);
         return imageToPredraw;
     }
     
