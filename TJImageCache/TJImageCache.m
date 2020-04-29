@@ -106,6 +106,9 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             }
             if (delegate) {
                 [delegatesForRequest addObject:delegate];
+            } else {
+                // Since this request was started without a delegate, we add ourself as a no-op delegate to ensure that future calls to -cancelImageLoadForURL:delegate: won't inadvertently cancel it.
+                [delegatesForRequest addObject:self];
             }
         });
     }
@@ -140,7 +143,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                     session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                 });
                 
-                [[session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                NSURLSessionDownloadTask *const task = [session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     BOOL validToProcess = location != nil;
                     if (validToProcess) {
                         BOOL validContentType;
@@ -189,7 +192,13 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
                         // Inform delegates about failure
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
                     }
-                }] resume];
+                }];
+                
+                _tasksForImageURLStringWithBlock(^(NSMapTable<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                    [tasks setObject:task forKey:urlString];
+                });
+                
+                [task resume];
             } else {
                 // Inform delegates about failure
                 _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
@@ -198,6 +207,26 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
     }
     
     return inMemoryImage;
+}
+
++ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
+{
+    __block BOOL cancelTask = NO;
+    _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+        NSHashTable *const delegates = [requestDelegates objectForKey:urlString]; // todo: if urlString is nil do this for all pending loads.
+        if (delegates) {
+            [delegates removeObject:delegate];
+            if (delegates.count == 0) {
+                [requestDelegates removeObjectForKey:urlString];
+                cancelTask = YES;
+            }
+        }
+    });
+    if (cancelTask) {
+        _tasksForImageURLStringWithBlock(^(NSMapTable<NSString *,NSURLSessionDataTask *> *const tasks) {
+            [[tasks objectForKey:urlString] cancel];
+        });
+    }
 }
 
 #pragma mark - Cache Checking
@@ -403,6 +432,23 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
     pthread_mutex_unlock(&lock);
 }
 
+/// Keys are image URL strings
+static void _tasksForImageURLStringWithBlock(void (^block)(NSMapTable<NSString *, NSURLSessionDownloadTask *> *const tasks))
+{
+    static NSMapTable<NSString *, NSURLSessionDownloadTask *> *tasks = nil;
+    static dispatch_once_t token;
+    static pthread_mutex_t lock;
+    
+    dispatch_once(&token, ^{
+        tasks = [NSMapTable strongToWeakObjectsMapTable];
+        pthread_mutex_init(&lock, nil);
+    });
+    
+    pthread_mutex_lock(&lock);
+    block(tasks);
+    pthread_mutex_unlock(&lock);
+}
+
 static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
 {
     IMAGE_CLASS *image = nil;
@@ -552,6 +598,14 @@ static void _modifyDeltaSize(const long long delta)
         _tj_imageCacheDeltaSize += delta;
         _setApproximateCacheSize(_tj_imageCacheBaseSize.longLongValue + _tj_imageCacheDeltaSize);
     }
+}
+
+#pragma mark - TJImageCacheDelegate
+
++ (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
+{
+    // No-op
+    // This is here for "headless" requests to have a delegate
 }
 
 @end

@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth;
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url;
 
++ (void)cancelImageLoadForURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate;
+
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url;
 
 + (void)removeImageAtURL:(NSString *const)url;
