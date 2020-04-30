@@ -8,12 +8,15 @@ You must configure the cache using either `+configureWithDefaultRootPath` or `+c
 
 To fetch an image, use one of the following methods.
 
-1. `+imageAtURL:depth:delegate:`
-2. `+imageAtURL:delegate:`
-3. `+imageAtURL:depth:`
-4. `+imageAtURL:`
+1. `+imageAtURL:depth:delegate:forceDecompress:`
+2. `+imageAtURL:depth:delegate:`
+3. `+imageAtURL:delegate:`
+4. `+imageAtURL:depth:`
+5. `+imageAtURL:`
 
 In the event that the image is already in memory, each of these methods returns an image. If not, the `TJImageCacheDelegate` methods will be called back on the delegate you provide.
+
+You can cancel an in-progress image load using `+cancelImageLoadForURL:delegate:`.
 
 ## Image Views
 
