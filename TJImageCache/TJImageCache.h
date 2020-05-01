@@ -23,12 +23,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+extern NSString *TJImageCacheHash(NSString *string);
+
 @interface TJImageCache : NSObject
 
 + (void)configureWithDefaultRootPath;
 + (void)configureWithRootPath:(NSString *const)rootPath;
 
-+ (NSString *)hash:(NSString *)string;
++ (NSString *)hash:(NSString *)string __attribute__((deprecated("Use TJImageCacheHash instead", "TJImageCacheHash")));
 + (NSString *)pathForURLString:(NSString *const)urlString;
 
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress;

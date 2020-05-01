@@ -34,6 +34,11 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 + (NSString *)hash:(NSString *)string
 {
+    return TJImageCacheHash(string);
+}
+
+NSString *TJImageCacheHash(NSString *string)
+{
     const char *str = [string UTF8String];
     unsigned char result[CC_MD5_DIGEST_LENGTH];
     CC_MD5(str, (CC_LONG)strlen(str), result);
@@ -47,7 +52,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 + (NSString *)pathForURLString:(NSString *const)urlString
 {
-    return _pathForHash([self hash:urlString]);
+    return _pathForHash(TJImageCacheHash(urlString));
 }
 
 #pragma mark - Image Fetching
@@ -124,7 +129,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
             readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
         });
         dispatch_async(readQueue, ^{
-            NSString *const hash = [self hash:urlString];
+            NSString *const hash = TJImageCacheHash(urlString);
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
@@ -246,7 +251,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
         return TJImageCacheDepthMemory;
     }
     
-    NSString *const hash = [self hash:urlString];
+    NSString *const hash = TJImageCacheHash(urlString);
     if ([[NSFileManager defaultManager] fileExistsAtPath:_pathForHash(hash)]) {
         return TJImageCacheDepthDisk;
     }
@@ -275,7 +280,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 + (void)removeImageAtURL:(NSString *const)urlString
 {
     [_cache() removeObjectForKey:urlString];
-    NSString *const hash = [self hash:urlString];
+    NSString *const hash = TJImageCacheHash(urlString);
     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         [mapTable removeObjectForKey:hash];
         [mapTable removeObjectForKey:urlString];
