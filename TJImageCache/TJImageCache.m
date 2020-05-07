@@ -197,9 +197,13 @@ NSString *TJImageCacheHash(NSString *string)
                         // Inform delegates about failure
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
                     }
+                    
+                    _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                        [tasks removeObjectForKey:urlString];
+                    });
                 }];
                 
-                _tasksForImageURLStringWithBlock(^(NSMapTable<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
                     [tasks setObject:task forKey:urlString];
                 });
                 
@@ -228,8 +232,9 @@ NSString *TJImageCacheHash(NSString *string)
         }
     });
     if (cancelTask) {
-        _tasksForImageURLStringWithBlock(^(NSMapTable<NSString *,NSURLSessionDataTask *> *const tasks) {
+        _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
             [[tasks objectForKey:urlString] cancel];
+            [tasks removeObjectForKey:urlString];
         });
     }
 }
@@ -438,14 +443,14 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
 }
 
 /// Keys are image URL strings
-static void _tasksForImageURLStringWithBlock(void (^block)(NSMapTable<NSString *, NSURLSessionDownloadTask *> *const tasks))
+static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
 {
-    static NSMapTable<NSString *, NSURLSessionDownloadTask *> *tasks = nil;
+    static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks = nil;
     static dispatch_once_t token;
     static pthread_mutex_t lock;
     
     dispatch_once(&token, ^{
-        tasks = [NSMapTable strongToWeakObjectsMapTable];
+        tasks = [NSMutableDictionary new];
         pthread_mutex_init(&lock, nil);
     });
     
