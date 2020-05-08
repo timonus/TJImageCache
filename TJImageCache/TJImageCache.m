@@ -234,7 +234,6 @@ NSString *TJImageCacheHash(NSString *string)
     if (cancelTask) {
         _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
             [[tasks objectForKey:urlString] cancel];
-            [tasks removeObjectForKey:urlString];
         });
     }
 }
