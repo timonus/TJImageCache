@@ -152,7 +152,9 @@ NSString *TJImageCacheHash(NSString *string)
                     session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                 });
                 
-                NSURLSessionDownloadTask *const task = [session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
+                [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
+                NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     BOOL validToProcess = location != nil;
                     if (validToProcess) {
                         BOOL validContentType;
