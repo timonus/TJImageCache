@@ -573,7 +573,7 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
 
 + (void)computeDiskCacheSizeIfNeeded
 {
-    if (!_tj_imageCacheBaseSize) {
+    if (_tj_imageCacheBaseSize == nil) {
         [self getDiskCacheSize:^(long long diskCacheSize) {
             // intentional no-op, cache size is set as a side effect of +getDiskCacheSize: running.
         }];
