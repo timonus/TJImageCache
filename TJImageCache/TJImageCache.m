@@ -398,7 +398,7 @@ static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
     static dispatch_once_t token;
     
     dispatch_once(&token, ^{
-        cache = [[NSCache alloc] init];
+        cache = [NSCache new];
     });
     
     return cache;
@@ -438,7 +438,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
     static pthread_mutex_t lock;
     
     dispatch_once(&token, ^{
-        requests = [[NSMutableDictionary alloc] init];
+        requests = [NSMutableDictionary new];
         pthread_mutex_init(&lock, nil);
     });
     
