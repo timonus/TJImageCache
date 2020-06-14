@@ -10,7 +10,7 @@
 
 #import <objc/runtime.h>
 
-static const char *kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLString";
+static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLString";
 
 @interface UIImageView (TJImageCachePrivate) <TJImageCacheDelegate>
 
