@@ -10,7 +10,7 @@
 
 #import <objc/runtime.h>
 
-static const char *kTJImageCacheItemProviderLoadCompletionBlockKey = "kTJImageCacheItemProviderLoadCompletionBlockKey";
+static char *const kTJImageCacheItemProviderLoadCompletionBlockKey = "kTJImageCacheItemProviderLoadCompletionBlockKey";
 
 @interface NSItemProvider (TJImageCacheDelegate) <TJImageCacheDelegate>
 
