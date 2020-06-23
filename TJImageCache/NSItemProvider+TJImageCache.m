@@ -16,6 +16,9 @@ static char *const kTJImageCacheItemProviderLoadCompletionBlockKey = "kTJImageCa
 
 @end
 
+#if defined(__IPHONE_14_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_14_0
+__attribute__((objc_direct_members))
+#endif
 @implementation NSItemProvider (TJImageCache)
 
 + (instancetype)tj_itemProviderForImageURLString:(NSString *const)imageURLString
@@ -41,6 +44,9 @@ static char *const kTJImageCacheItemProviderLoadCompletionBlockKey = "kTJImageCa
 
 @end
 
+#if defined(__IPHONE_14_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_14_0
+__attribute__((objc_direct_members))
+#endif
 @implementation NSItemProvider (TJImageCacheDelegate)
 
 static void _tryInvokeCallbackWithImage(NSItemProvider *const itemProvider, UIImage *const image)
