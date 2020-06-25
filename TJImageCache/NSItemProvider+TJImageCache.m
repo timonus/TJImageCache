@@ -16,7 +16,7 @@ static char *const kTJImageCacheItemProviderLoadCompletionBlockKey = "kTJImageCa
 
 @end
 
-#if defined(__IPHONE_14_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_14_0
+#if defined(__has_attribute) && __has_attribute(objc_direct_members)
 __attribute__((objc_direct_members))
 #endif
 @implementation NSItemProvider (TJImageCache)
@@ -44,7 +44,7 @@ __attribute__((objc_direct_members))
 
 @end
 
-#if defined(__IPHONE_14_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_14_0
+#if defined(__has_attribute) && __has_attribute(objc_direct_members)
 __attribute__((objc_direct_members))
 #endif
 @implementation NSItemProvider (TJImageCacheDelegate)
