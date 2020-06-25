@@ -11,6 +11,21 @@ static NSNumber *_tj_imageCacheBaseSize;
 static long long _tj_imageCacheDeltaSize;
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
+// DO NOT mark as Obj-C direct, will lead to exceptions.
+@interface TJImageCacheNoOpDelegate : NSObject
+
+@end
+
+@implementation TJImageCacheNoOpDelegate
+
++ (void)didGetImage:(UIImage *)image atURL:(NSString *)url
+{
+    // intentional no-op
+}
+
+@end
+
+
 #if defined(__IPHONE_14_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_14_0
 __attribute__((objc_direct_members))
 #endif
@@ -120,7 +135,7 @@ NSString *TJImageCacheHash(NSString *string)
                 [delegatesForRequest addObject:delegate];
             } else {
                 // Since this request was started without a delegate, we add ourself as a no-op delegate to ensure that future calls to -cancelImageLoadForURL:delegate: won't inadvertently cancel it.
-                [delegatesForRequest addObject:self];
+                [delegatesForRequest addObject:[TJImageCacheNoOpDelegate class]];
             }
         });
     }
@@ -616,14 +631,6 @@ static void _modifyDeltaSize(const long long delta)
         _tj_imageCacheDeltaSize += delta;
         _setApproximateCacheSize(_tj_imageCacheBaseSize.longLongValue + _tj_imageCacheDeltaSize);
     }
-}
-
-#pragma mark - TJImageCacheDelegate
-
-+ (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
-{
-    // No-op
-    // This is here for "headless" requests to have a delegate
 }
 
 @end
