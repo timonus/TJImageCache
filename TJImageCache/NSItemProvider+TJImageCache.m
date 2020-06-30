@@ -53,7 +53,7 @@ static void _tryInvokeCallbackWithImage(NSItemProvider *const itemProvider, UIIm
 {
     void (^completionHandler)(id<NSItemProviderWriting> _Nullable object, NSError * _Nullable error) = objc_getAssociatedObject(itemProvider, kTJImageCacheItemProviderLoadCompletionBlockKey);
     if (completionHandler) {
-        completionHandler(nil, nil);
+        completionHandler(image, nil);
     }
 }
 
