@@ -141,44 +141,23 @@ NSString *TJImageCacheHash(NSString *string)
     
     // Attempt load from disk and network.
     if (loadAsynchronously) {
-        static dispatch_queue_t readQueue = nil;
-        static dispatch_once_t readQueueOnceToken;
-        dispatch_once(&readQueueOnceToken, ^{
-            // NOTE: There could be a perf improvement to be had here using dispatch barriers (https://bit.ly/2FvNNff).
-            // The readQueue could be made concurrent, and and writes would have to be added to a dispatch_barrier_sync call like so https://db.tt/1qRAxNvejH (changes marked with *'s)
-            // My fear in doing that is that a bunch of threads will be spawned and blocked on I/O.
-//            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
-            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
-        });
-        dispatch_async(readQueue, ^{
+        dispatch_async(_readQueue(), ^{
             NSString *const hash = TJImageCacheHash(urlString);
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
             
-            // Docs on dispatch_channels https://apple.co/3eTiIVv
-            const dispatch_io_t channel = dispatch_io_create_with_path(DISPATCH_IO_RANDOM,
-                                                                       [path UTF8String],
-                                                                       O_RDONLY,
-                                                                       0,
-                                                                       readQueue,
-                                                                       ^(int error) { /* no-op */ });
-            
-            dispatch_io_read(channel,
-                             0,
-                             SIZE_MAX,
-                             readQueue,
-                             ^(bool done, dispatch_data_t data, int error) {
+            _loadDataFromDiskAsync(path, ^(NSData *data) {
                 
                 //            if (!done) {
                 //                // Defer processing until finished
                 //                return;
                 //            }
                 
-                if (error == 0 && dispatch_data_get_size(data) > 0) {
+                if (data) {
                     // Inform delegates about success
                     // (dispatch_data_t is toll-free bridged to NSData https://stackoverflow.com/a/19670376/3943258)
-                    _tryUpdateMemoryCacheAndCallDelegates((NSData *)data, path, urlString, hash, forceDecompress, 0);
+                    _tryUpdateMemoryCacheAndCallDelegates(data, path, urlString, hash, forceDecompress, 0);
                     
                     // Update last access date
                     [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
@@ -237,7 +216,9 @@ NSString *TJImageCacheHash(NSString *string)
                         
                         if (success) {
                             // Inform delegates about success
-                            _tryUpdateMemoryCacheAndCallDelegates(nil, path, urlString, hash, forceDecompress, response.expectedContentLength);
+                            _loadDataFromDiskAsync(path, ^(NSData *data) {
+                                _tryUpdateMemoryCacheAndCallDelegates(data, path, urlString, hash, forceDecompress, response.expectedContentLength);
+                            });
                         } else {
                             // Inform delegates about failure
                             _tryUpdateMemoryCacheAndCallDelegates(nil, nil, urlString, hash, forceDecompress, 0);
@@ -609,6 +590,42 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
     }
     
     return predrawnImage;
+}
+
+static dispatch_queue_t _readQueue()
+{
+    static dispatch_queue_t readQueue = nil;
+    static dispatch_once_t readQueueOnceToken;
+    dispatch_once(&readQueueOnceToken, ^{
+        // NOTE: There could be a perf improvement to be had here using dispatch barriers (https://bit.ly/2FvNNff).
+        // The readQueue could be made concurrent, and and writes would have to be added to a dispatch_barrier_sync call like so https://db.tt/1qRAxNvejH (changes marked with *'s)
+        // My fear in doing that is that a bunch of threads will be spawned and blocked on I/O.
+//            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
+        readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
+    });
+    return readQueue;
+}
+
+static void _loadDataFromDiskAsync(NSString *const path, void (^completion)(NSData *))
+{
+    // Docs on dispatch_channels https://apple.co/3eTiIVv
+    const dispatch_io_t channel = dispatch_io_create_with_path(DISPATCH_IO_RANDOM,
+                                                               [path UTF8String],
+                                                               O_RDONLY,
+                                                               0,
+                                                               _readQueue(),
+                                                               ^(int error) { /* no-op */ });
+    
+    dispatch_io_read(channel,
+                     0,
+                     SIZE_MAX,
+                     _readQueue(),
+                     ^(bool done, dispatch_data_t data, int error) {
+        if (data && dispatch_data_get_size(data) == 0) {
+            data = nil;
+        }
+        completion((NSData *)data);
+    });
 }
 
 + (void)computeDiskCacheSizeIfNeeded
