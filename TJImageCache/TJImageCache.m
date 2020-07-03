@@ -615,7 +615,7 @@ static void _loadDataFromDiskAsync(NSString *const path, void (^completion)(NSDa
                      SIZE_MAX,
                      _readQueue(),
                      ^(bool done, dispatch_data_t data, int error) {
-        if (!done) {
+//        if (!done) {
             // "done" is a bit of a misnomer for dispatch_io_read.
             // The block is invoked whenever a chunk of data is read, and invoked finally with done=true once finished with empty data.
             // Since we're reading it all in at once, we should treat "*not* done" as "this is all the data", done will have empty data.
@@ -623,7 +623,7 @@ static void _loadDataFromDiskAsync(NSString *const path, void (^completion)(NSDa
                 data = nil;
             }
             completion((NSData *)data);
-        }
+//        }
     });
 }
 
