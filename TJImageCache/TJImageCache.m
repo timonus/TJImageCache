@@ -148,12 +148,6 @@ NSString *TJImageCacheHash(NSString *string)
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
             
             _loadDataFromDiskAsync(path, ^(NSData *data) {
-                
-                //            if (!done) {
-                //                // Defer processing until finished
-                //                return;
-                //            }
-                
                 if (data) {
                     // Inform delegates about success
                     // (dispatch_data_t is toll-free bridged to NSData https://stackoverflow.com/a/19670376/3943258)
@@ -621,10 +615,15 @@ static void _loadDataFromDiskAsync(NSString *const path, void (^completion)(NSDa
                      SIZE_MAX,
                      _readQueue(),
                      ^(bool done, dispatch_data_t data, int error) {
-        if (data && dispatch_data_get_size(data) == 0) {
-            data = nil;
+        if (!done) {
+            // "done" is a bit of a misnomer for dispatch_io_read.
+            // The block is invoked whenever a chunk of data is read, and invoked finally with done=true once finished with empty data.
+            // Since we're reading it all in at once, we should treat "*not* done" as "this is all the data", done will have empty data.
+            if (data && dispatch_data_get_size(data) == 0) {
+                data = nil;
+            }
+            completion((NSData *)data);
         }
-        completion((NSData *)data);
     });
 }
 
