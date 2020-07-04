@@ -353,7 +353,7 @@ NSString *TJImageCacheHash(NSString *string)
                 }, NO);
                 BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
-                    NSString *path = [_rootPath() stringByAppendingPathComponent:file];
+                    NSString *const path = _pathForHash(file);
                     if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
                         wasRemoved = YES;
                     }
