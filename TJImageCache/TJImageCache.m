@@ -202,7 +202,7 @@ NSString *TJImageCacheHash(NSString *string)
                                 
                                 // Don't back up
                                 // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-                                NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [[NSURL alloc] initFileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+                                NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
                                 [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
                             }
                         });
