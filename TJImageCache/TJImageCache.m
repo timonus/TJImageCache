@@ -288,7 +288,7 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion
 {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
         long long fileSize = 0;
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
         for (NSString *filename in enumerator) {
