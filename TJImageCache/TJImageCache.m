@@ -142,24 +142,27 @@ NSString *TJImageCacheHash(NSString *string)
     // Attempt load from disk and network.
     if (loadAsynchronously) {
         static dispatch_queue_t readQueue = nil;
-        static dispatch_once_t readQueueOnceToken;
-        dispatch_once(&readQueueOnceToken, ^{
+        static NSFileManager *fileManager;
+        static dispatch_once_t readOnceToken;
+        dispatch_once(&readOnceToken, ^{
             // NOTE: There could be a perf improvement to be had here using dispatch barriers (https://bit.ly/2FvNNff).
             // The readQueue could be made concurrent, and and writes would have to be added to a dispatch_barrier_sync call like so https://db.tt/1qRAxNvejH (changes marked with *'s)
             // My fear in doing that is that a bunch of threads will be spawned and blocked on I/O.
             readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL);
+            
+            fileManager = [NSFileManager defaultManager];
         });
         dispatch_async(readQueue, ^{
             NSString *const hash = TJImageCacheHash(urlString);
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
-            if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            if ([fileManager fileExistsAtPath:path]) {
                 // Inform delegates about success
                 _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
-                [[NSFileManager defaultManager] setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
+                [fileManager setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
             } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                 static NSURLSession *session = nil;
                 static dispatch_once_t sessionOnceToken;
@@ -197,8 +200,8 @@ NSString *TJImageCacheHash(NSString *string)
                         static dispatch_once_t rootDirectoryOnceToken;
                         dispatch_once(&rootDirectoryOnceToken, ^{
                             BOOL isDir = NO;
-                            if (!([[NSFileManager defaultManager] fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
-                                [[NSFileManager defaultManager] createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+                            if (!([fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
+                                [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
                                 
                                 // Don't back up
                                 // https://developer.apple.com/library/ios/qa/qa1719/_index.html
@@ -208,7 +211,7 @@ NSString *TJImageCacheHash(NSString *string)
                         });
                         
                         // Move resulting image into place.
-                        success = [[NSFileManager defaultManager] moveItemAtPath:location.path toPath:path error:nil];
+                        success = [fileManager moveItemAtPath:location.path toPath:path error:nil];
                     } else {
                         success = NO;
                     }
@@ -313,8 +316,9 @@ NSString *TJImageCacheHash(NSString *string)
         [mapTable removeObjectForKey:urlString];
     }, YES);
     NSString *const path = _pathForHash(hash);
-    const long long fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileSize];
-    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
+    NSFileManager *const fileManager = [NSFileManager defaultManager];
+    const long long fileSize = [[fileManager attributesOfItemAtPath:path error:nil] fileSize];
+    if ([fileManager removeItemAtPath:path error:nil]) {
         _modifyDeltaSize(-fileSize);
     }
 }
@@ -339,7 +343,8 @@ NSString *TJImageCacheHash(NSString *string)
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(dispatch_block_t)completionBlock
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
+        NSFileManager *const fileManager = [NSFileManager defaultManager];
+        NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtPath:_rootPath()];
         long long totalFileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
@@ -354,7 +359,7 @@ NSString *TJImageCacheHash(NSString *string)
                 BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
                     NSString *const path = _pathForHash(file);
-                    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
+                    if ([fileManager removeItemAtPath:path error:nil]) {
                         wasRemoved = YES;
                     }
                 }
