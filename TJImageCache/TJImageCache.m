@@ -64,11 +64,23 @@ NSString *TJImageCacheHash(NSString *string)
     CC_MD5(str, (CC_LONG)strlen(str), result);
 #pragma clang diagnostic pop
     
-    NSMutableString *ret = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
-    for (int i = 0; i < CC_MD5_DIGEST_LENGTH; i++) {
-        [ret appendFormat:@"%02x", result[i]];
-    }
-    return ret;
+    return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            result[0],
+            result[1],
+            result[2],
+            result[3],
+            result[4],
+            result[5],
+            result[6],
+            result[7],
+            result[8],
+            result[9],
+            result[10],
+            result[11],
+            result[12],
+            result[13],
+            result[14],
+            result[15]];
 }
 
 + (NSString *)pathForURLString:(NSString *const)urlString
