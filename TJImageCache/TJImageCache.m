@@ -262,6 +262,20 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
+    if (_cancelImage(urlString, delegate)) {
+        _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
+            [[tasks objectForKey:urlString] cancel];
+        });
+    }
+}
+
++ (void)cancelImageProcessingForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
+{
+    _cancelImage(urlString, delegate);
+}
+
+static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegate>delegate)
+{
     __block BOOL cancelTask = NO;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         NSHashTable *const delegates = [requestDelegates objectForKey:urlString]; // todo: if urlString is nil do this for all pending loads.
@@ -273,11 +287,7 @@ NSString *TJImageCacheHash(NSString *string)
             }
         }
     });
-    if (cancelTask) {
-        _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
-            [[tasks objectForKey:urlString] cancel];
-        });
-    }
+    return cancelTask;
 }
 
 #pragma mark - Cache Checking

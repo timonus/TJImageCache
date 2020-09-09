@@ -40,6 +40,7 @@ extern NSString *TJImageCacheHash(NSString *string);
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url;
 
 + (void)cancelImageLoadForURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate;
++ (void)cancelImageProcessingForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url;
 
