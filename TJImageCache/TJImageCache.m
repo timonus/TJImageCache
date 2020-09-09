@@ -500,25 +500,32 @@ static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<N
 
 static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
 {
-    IMAGE_CLASS *image = nil;
-    if (path) {
-        image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
-        if (forceDecompress) {
-            image = _predrawnImageFromImage(image);
-        }
-    }
-    if (image) {
-        [_cache() setObject:image forKey:urlString];
-        _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-            [mapTable setObject:image forKey:hash];
-            [mapTable setObject:image forKey:urlString];
-        }, YES);
-    }
     __block NSHashTable *delegatesForRequest = nil;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
     });
+    
+    const BOOL canProcess = delegatesForRequest.count > 0;
+    
+    IMAGE_CLASS *image = nil;
+    if (canProcess) {
+        if (path) {
+            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
+            if (forceDecompress) {
+                image = _predrawnImageFromImage(image);
+            }
+        }
+        if (image) {
+            [_cache() setObject:image forKey:urlString];
+            _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+                [mapTable setObject:image forKey:hash];
+                [mapTable setObject:image forKey:urlString];
+            }, YES);
+        }
+    }
+    // else { Skip drawing / updating cache / calling delegates since the result wouldn't be used }
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
             if (image) {
