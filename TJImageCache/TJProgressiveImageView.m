@@ -31,7 +31,7 @@
 
 - (void)setImageURLStrings:(NSOrderedSet<NSString *> * _Nullable)imageURLStrings secondaryImageDepth:(const TJImageCacheDepth)secondaryImageDepth
 {
-    if (imageURLStrings != _imageURLStrings) {
+    if (imageURLStrings != _imageURLStrings && ![imageURLStrings isEqual:_imageURLStrings]) {
         NSString *const priorImageURLString = self.currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:self.currentImageURLStringIndex] : nil;
         _imageURLStrings = imageURLStrings;
         self.currentImageURLStringIndex = _imageURLStrings == nil ? NSNotFound : [_imageURLStrings indexOfObject:priorImageURLString]; // returns NSNotFound if priorImageURLString == nil?
