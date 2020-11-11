@@ -153,7 +153,7 @@ NSString *TJImageCacheHash(NSString *string)
     
     // Attempt load from disk and network.
     if (loadAsynchronously) {
-        static dispatch_queue_t readQueue = nil;
+        static dispatch_queue_t readQueue;
         static NSFileManager *fileManager;
         static dispatch_once_t readOnceToken;
         dispatch_once(&readOnceToken, ^{
@@ -176,7 +176,7 @@ NSString *TJImageCacheHash(NSString *string)
                 // Update last access date
                 [fileManager setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
             } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
-                static NSURLSession *session = nil;
+                static NSURLSession *session;
                 static dispatch_once_t sessionOnceToken;
                 dispatch_once(&sessionOnceToken, ^{
                     // We use an ephemeral session since TJImageCache does memory and disk caching.
@@ -215,7 +215,7 @@ NSString *TJImageCacheHash(NSString *string)
                         // Lazily generate the directory the first time it's written to if needed.
                         static dispatch_once_t rootDirectoryOnceToken;
                         dispatch_once(&rootDirectoryOnceToken, ^{
-                            BOOL isDir = NO;
+                            BOOL isDir;
                             if (!([fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:&isDir] && isDir)) {
                                 [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
                                 
@@ -432,7 +432,7 @@ static NSString *_pathForHash(NSString *const hash)
 /// Keys are image URL strings, NOT hashes
 static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
 {
-    static NSCache<NSString *, IMAGE_CLASS *> *cache = nil;
+    static NSCache<NSString *, IMAGE_CLASS *> *cache;
     static dispatch_once_t token;
     
     dispatch_once(&token, ^{
@@ -448,9 +448,9 @@ static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
 /// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
 static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable), const BOOL blockIsWriteOnly)
 {
-    static NSMapTable<NSString *, IMAGE_CLASS *> *mapTable = nil;
+    static NSMapTable<NSString *, IMAGE_CLASS *> *mapTable;
     static dispatch_once_t token;
-    static dispatch_queue_t queue = nil;
+    static dispatch_queue_t queue;
     
     dispatch_once(&token, ^{
         mapTable = [NSMapTable strongToWeakObjectsMapTable];
@@ -471,7 +471,7 @@ static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS 
 /// Keys are image URL strings
 static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
 {
-    static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests = nil;
+    static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests;
     static dispatch_once_t token;
     static pthread_mutex_t lock;
     
@@ -488,7 +488,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
 /// Keys are image URL strings
 static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
 {
-    static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks = nil;
+    static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks;
     static dispatch_once_t token;
     static pthread_mutex_t lock;
     
@@ -546,7 +546,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
 static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
 {
     // Always use a device RGB color space for simplicity and predictability what will be going on.
-    static CGColorSpaceRef colorSpaceDeviceRGBRef = nil;
+    static CGColorSpaceRef colorSpaceDeviceRGBRef;
     static size_t numberOfComponents;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -632,7 +632,7 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
 
 static void _setApproximateCacheSize(const long long cacheSize)
 {
-    static NSString *key = nil;
+    static NSString *key;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         key = NSStringFromSelector(@selector(approximateDiskCacheSize));
