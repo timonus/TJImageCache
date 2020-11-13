@@ -8,9 +8,9 @@
 
 #import "TJProgressiveImageView.h"
 
-@interface TJProgressiveImageView () <TJImageCacheDelegate>
-
-@property (nonatomic) NSInteger currentImageURLStringIndex;
+@interface TJProgressiveImageView () <TJImageCacheDelegate> {
+    NSInteger _currentImageURLStringIndex;
+}
 
 @end
 
@@ -19,7 +19,7 @@
 - (instancetype)initWithFrame:(CGRect)frame
 {
     if (self = [super initWithFrame:frame]) {
-        self.currentImageURLStringIndex = NSNotFound;
+        _currentImageURLStringIndex = NSNotFound;
     }
     return self;
 }
@@ -32,13 +32,13 @@
 - (void)setImageURLStrings:(NSOrderedSet<NSString *> * _Nullable)imageURLStrings secondaryImageDepth:(const TJImageCacheDepth)secondaryImageDepth
 {
     if (imageURLStrings != _imageURLStrings && ![imageURLStrings isEqual:_imageURLStrings]) {
-        NSString *const priorImageURLString = self.currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:self.currentImageURLStringIndex] : nil;
+        NSString *const priorImageURLString = _currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:_currentImageURLStringIndex] : nil;
         _imageURLStrings = imageURLStrings;
-        self.currentImageURLStringIndex = _imageURLStrings == nil ? NSNotFound : [_imageURLStrings indexOfObject:priorImageURLString]; // returns NSNotFound if priorImageURLString == nil?
+        _currentImageURLStringIndex = _imageURLStrings == nil ? NSNotFound : [_imageURLStrings indexOfObject:priorImageURLString];
         
-        if (self.currentImageURLStringIndex != 0) {
+        if (_currentImageURLStringIndex != 0) {
             [_imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull urlString, NSUInteger idx, BOOL * _Nonnull stop) {
-                if (idx >= self.currentImageURLStringIndex) {
+                if (idx >= _currentImageURLStringIndex) {
                     // Don't attempt to load images beyond the best one we already have.
                     *stop = YES;
                 } else {
@@ -46,14 +46,14 @@
                     const TJImageCacheDepth depth = idx == 0 ? TJImageCacheDepthNetwork : secondaryImageDepth;
                     UIImage *const image = [TJImageCache imageAtURL:urlString depth:depth delegate:self forceDecompress:YES];
                     if (image) {
-                        self.currentImageURLStringIndex = idx;
+                        _currentImageURLStringIndex = idx;
                         self.image = image;
                         *stop = YES;
                     }
                 }
             }];
             
-            if (self.currentImageURLStringIndex == NSNotFound) {
+            if (_currentImageURLStringIndex == NSNotFound) {
                 self.image = nil;
             }
         }
@@ -63,7 +63,7 @@
 - (void)cancelImageLoads
 {
     [self.imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull urlString, NSUInteger idx, BOOL * _Nonnull stop) {
-        if (idx < self.currentImageURLStringIndex || self.currentImageURLStringIndex == NSNotFound) {
+        if (idx < _currentImageURLStringIndex || _currentImageURLStringIndex == NSNotFound) {
             [TJImageCache cancelImageLoadForURL:urlString delegate:self];
         } else {
             *stop = YES;
@@ -75,9 +75,10 @@
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url
 {
-    const NSInteger index = self.imageURLStrings ? [self.imageURLStrings indexOfObject:url] : NSNotFound;
-    if (index != NSNotFound && index < self.currentImageURLStringIndex) {
-        self.currentImageURLStringIndex = index;
+    NSOrderedSet<NSString *> *const imageURLStrings = self.imageURLStrings;
+    const NSInteger index = imageURLStrings ? [imageURLStrings indexOfObject:url] : NSNotFound;
+    if (index != NSNotFound && index < _currentImageURLStringIndex) {
+        _currentImageURLStringIndex = index;
         self.image = image;
     }
 }
