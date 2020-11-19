@@ -238,15 +238,7 @@ NSString *TJImageCacheHash(NSString *string)
                         // Inform delegates about failure
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
                     }
-                    
-                    _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
-                        [tasks removeObjectForKey:urlString];
-                    });
                 }];
-                
-                _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
-                    [tasks setObject:task forKey:urlString];
-                });
                 
                 [task resume];
             } else {
@@ -257,15 +249,6 @@ NSString *TJImageCacheHash(NSString *string)
     }
     
     return inMemoryImage;
-}
-
-+ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
-{
-    if (_cancelImage(urlString, delegate)) {
-        _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
-            [[tasks objectForKey:urlString] cancel];
-        });
-    }
 }
 
 + (void)cancelImageProcessingForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
@@ -492,23 +475,6 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
     
     dispatch_sync(queue, ^{
         block(requests);
-    });
-}
-
-/// Keys are image URL strings
-static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
-{
-    static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks;
-    static dispatch_once_t token;
-    static dispatch_queue_t queue;
-    
-    dispatch_once(&token, ^{
-        tasks = [NSMutableDictionary new];
-        queue = dispatch_queue_create("TJImageCache._tasksForImageURLStringWithBlock", DISPATCH_QUEUE_SERIAL);
-    });
-    
-    dispatch_sync(queue, ^{
-        block(tasks);
     });
 }
 

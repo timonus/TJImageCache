@@ -61,14 +61,4 @@ static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
     return objc_getAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey);
 }
 
-- (void)tj_cancelImageLoad
-{
-    if (!self.image) {
-        NSString *urlString = [self tj_imageURLString];
-        if (urlString) {
-            [TJImageCache cancelImageLoadForURL:urlString delegate:self];
-        }
-    }
-}
-
 @end
