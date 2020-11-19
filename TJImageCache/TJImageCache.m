@@ -3,7 +3,6 @@
 
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
-#import <pthread.h>
 
 static NSString *_tj_imageCacheRootPath;
 
