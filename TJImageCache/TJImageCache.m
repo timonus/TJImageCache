@@ -473,16 +473,16 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
 {
     static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests;
     static dispatch_once_t token;
-    static pthread_mutex_t lock;
+    static dispatch_queue_t queue;
     
     dispatch_once(&token, ^{
         requests = [NSMutableDictionary new];
-        pthread_mutex_init(&lock, nil);
+        queue = dispatch_queue_create("TJImageCache._requestDelegatesWithBlock", DISPATCH_QUEUE_SERIAL);
     });
     
-    pthread_mutex_lock(&lock);
-    block(requests);
-    pthread_mutex_unlock(&lock);
+    dispatch_sync(queue, ^{
+        block(requests);
+    });
 }
 
 /// Keys are image URL strings
@@ -490,16 +490,16 @@ static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<N
 {
     static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks;
     static dispatch_once_t token;
-    static pthread_mutex_t lock;
+    static dispatch_queue_t queue;
     
     dispatch_once(&token, ^{
         tasks = [NSMutableDictionary new];
-        pthread_mutex_init(&lock, nil);
+        queue = dispatch_queue_create("TJImageCache._tasksForImageURLStringWithBlock", DISPATCH_QUEUE_SERIAL);
     });
     
-    pthread_mutex_lock(&lock);
-    block(tasks);
-    pthread_mutex_unlock(&lock);
+    dispatch_sync(queue, ^{
+        block(tasks);
+    });
 }
 
 static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
