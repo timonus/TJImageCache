@@ -33,7 +33,7 @@ __attribute__((objc_direct_members))
 
 + (void)configureWithDefaultRootPath
 {
-    [self configureWithRootPath:[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent:@"TJImageCache"]];
+    [self configureWithRootPath:[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"TJImageCache"]];
 }
 
 + (void)configureWithRootPath:(NSString *const)rootPath
