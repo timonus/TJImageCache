@@ -168,11 +168,12 @@ NSString *TJImageCacheHash(NSString *string)
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
-            if ([fileManager fileExistsAtPath:path]) {
+            if ([fileManager fileExistsAtPath:path]) { // also slow... maybe just try making the image
                 // Inform delegates about success
                 _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
+                // SLOW
                 [fileManager setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
             } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                 static NSURLSession *session;
@@ -514,9 +515,11 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
-            image = [[IMAGE_CLASS alloc] initWithContentsOfFile:path];
             if (forceDecompress) {
-                image = _predrawnImageFromImage(image);
+                image = _predrawnImageFromPath(path);
+            }
+            if (!image) {
+                image = [IMAGE_CLASS imageWithContentsOfFile:path];
             }
         }
         if (image) {
@@ -541,8 +544,8 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     });
 }
 
-// Taken from https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
-static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
+// Modified version of https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
+static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
 {
     // Always use a device RGB color space for simplicity and predictability what will be going on.
     static CGColorSpaceRef colorSpaceDeviceRGBRef;
@@ -558,20 +561,34 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
             numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
         }
     });
-    // Early return on failure!
-    if (!colorSpaceDeviceRGBRef) {
-        NSLog(@"Failed to `CGColorSpaceCreateDeviceRGB` for image %@", imageToPredraw);
-        return imageToPredraw;
+    
+    const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], nil);
+    if (!imageSource) {
+        return nil;
+    }
+    
+    if (CGImageSourceGetCount(imageSource) == 0) {
+        CFRelease(imageSource);
+        return nil;
+    }
+    
+    const CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil);
+    
+    CFRelease(imageSource);
+    
+    if (!image) {
+        return nil;
     }
     
     // "In iOS 4.0 and later, and OS X v10.6 and later, you can pass NULL if you want Quartz to allocate memory for the bitmap." (source: docs)
     void *data = NULL;
-    const size_t width = imageToPredraw.size.width;
+    const size_t width = CGImageGetWidth(image);
+    const size_t height = CGImageGetHeight(image);
     static const size_t bitsPerComponent = CHAR_BIT;
     
     const size_t bytesPerRow = (((bitsPerComponent * numberOfComponents) / 8) * width);
     
-    CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(imageToPredraw.CGImage);
+    CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
     // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
     // "For bitmaps created in iOS 3.2 and later, the drawing environment uses the premultiplied ARGB format to store the bitmap data." (source: docs)
     if (alphaInfo == kCGImageAlphaNone || alphaInfo == kCGImageAlphaOnly) {
@@ -592,25 +609,21 @@ static IMAGE_CLASS *_predrawnImageFromImage(IMAGE_CLASS *const imageToPredraw)
     
     // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
     // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
-    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, imageToPredraw.size.height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
+    
+    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
     // Early return on failure!
     if (!bitmapContextRef) {
-        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, (size_t)imageToPredraw.size.height, bitsPerComponent, bytesPerRow, imageToPredraw);
-        return imageToPredraw;
+        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, bitsPerComponent, bytesPerRow, image);
+        return nil;
     }
     
     // Draw image in bitmap context and create image by preserving receiver's properties.
-    CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, imageToPredraw.size.width, imageToPredraw.size.height), imageToPredraw.CGImage);
+    CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, width, height), image);
     const CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
-    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef scale:imageToPredraw.scale orientation:imageToPredraw.imageOrientation];
+    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef];
+    CGImageRelease(image);
     CGImageRelease(predrawnImageRef);
     CGContextRelease(bitmapContextRef);
-    
-    // Early return on failure!
-    if (!predrawnImage) {
-        NSCAssert(NO, @"Failed to `imageWithCGImage:scale:orientation:` with image ref %@ created with color space %@ and bitmap context %@ and properties and properties (scale: %f orientation: %ld) for image %@", predrawnImageRef, colorSpaceDeviceRGBRef, bitmapContextRef, imageToPredraw.scale, (long)imageToPredraw.imageOrientation, imageToPredraw);
-        return imageToPredraw;
-    }
     
     return predrawnImage;
 }
