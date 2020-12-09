@@ -550,6 +550,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     // Always use a device RGB color space for simplicity and predictability what will be going on.
     static CGColorSpaceRef colorSpaceDeviceRGBRef;
     static size_t numberOfComponents;
+    static CFDictionaryRef options;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
@@ -560,6 +561,8 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
             // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
             numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
         }
+        
+        options = (__bridge_retained CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanFalse};
     });
     
     const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], nil);
@@ -572,7 +575,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
         return nil;
     }
     
-    const CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil);
+    const CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, options);
     
     CFRelease(imageSource);
     
