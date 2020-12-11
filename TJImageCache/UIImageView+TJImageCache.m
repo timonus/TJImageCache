@@ -50,6 +50,9 @@ static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
     if (imageURLString != currentImageURLString && ![imageURLString isEqualToString:currentImageURLString]) {
         objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
         self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self forceDecompress:forceDecompress];
+        if (currentImageURLString) {
+            [TJImageCache cancelImageProcessingForURL:currentImageURLString delegate:self];
+        }
     }
 }
 
