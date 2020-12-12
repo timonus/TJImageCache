@@ -168,13 +168,12 @@ NSString *TJImageCacheHash(NSString *string)
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
-            if ([fileManager fileExistsAtPath:path]) { // also slow... maybe just try making the image
-                // Inform delegates about success
+            if ([fileManager fileExistsAtPath:path]) {
                 _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
-                // SLOW
-                [fileManager setAttributes:[NSDictionary dictionaryWithObject:[NSDate date] forKey:NSFileModificationDate] ofItemAtPath:path error:nil];
+                NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
+                [fileURL setResourceValue:[NSDate date] forKey:NSURLContentModificationDateKey error:nil];
             } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                 static NSURLSession *session;
                 static dispatch_once_t sessionOnceToken;
