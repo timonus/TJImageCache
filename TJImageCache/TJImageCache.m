@@ -321,7 +321,7 @@ static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegat
         NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
         for (NSString *filename in enumerator) {
 #pragma unused(filename)
-            fileSize += [[[enumerator fileAttributes] objectForKey:NSFileSize] longLongValue];
+            fileSize += enumerator.fileAttributes.fileSize;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(fileSize);
@@ -342,9 +342,10 @@ static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegat
     }, YES);
     NSString *const path = _pathForHash(hash);
     NSFileManager *const fileManager = [NSFileManager defaultManager];
-    const long long fileSize = [[fileManager attributesOfItemAtPath:path error:nil] fileSize];
+    NSNumber *fileSizeNumber;
+    [[NSURL fileURLWithPath:path] getResourceValue:&fileSizeNumber forKey:NSURLTotalFileSizeKey error:nil];
     if ([fileManager removeItemAtPath:path error:nil]) {
-        _modifyDeltaSize(-fileSize);
+        _modifyDeltaSize(-fileSizeNumber.longLongValue);
     }
 }
 
