@@ -34,10 +34,8 @@ extern NSString *TJImageCacheHash(NSString *string);
 
 @interface TJImageCache : NSObject
 
-+ (void)configureWithDefaultRootPath;
 + (void)configureWithRootPath:(NSString *const)rootPath;
 
-+ (NSString *)hash:(NSString *)string __attribute__((deprecated("Use TJImageCacheHash instead", "TJImageCacheHash")));
 + (NSString *)pathForURLString:(NSString *const)urlString;
 
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress;
@@ -48,17 +46,10 @@ extern NSString *TJImageCacheHash(NSString *string);
 
 + (void)cancelImageLoadForURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy;
 
-+ (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url;
-
-+ (void)removeImageAtURL:(NSString *const)url;
-+ (void)dumpDiskCache;
 + (void)dumpMemoryCache;
 + (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion;
 
 + (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(nullable dispatch_block_t)completionBlock; // return YES to preserve the image, return NO to delete it
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block;
-+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date;
-+ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date;
 
 + (void)computeDiskCacheSizeIfNeeded;
 /// Will be @c nil until @c +computeDiskCacheSizeIfNeeded, @c +getDiskCacheSize:, or one of the cache auditing methods is called once, then it will update automatically as the cache changes.
