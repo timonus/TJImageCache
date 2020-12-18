@@ -36,11 +36,6 @@ __attribute__((objc_direct_members))
 
 #pragma mark - Configuration
 
-+ (void)configureWithDefaultRootPath
-{
-    [self configureWithRootPath:[[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"TJImageCache"]];
-}
-
 + (void)configureWithRootPath:(NSString *const)rootPath
 {
     NSParameterAssert(rootPath);
@@ -52,11 +47,6 @@ __attribute__((objc_direct_members))
 }
 
 #pragma mark - Hashing
-
-+ (NSString *)hash:(NSString *)string
-{
-    return TJImageCacheHash(string);
-}
 
 NSString *TJImageCacheHash(NSString *string)
 {
@@ -367,29 +357,6 @@ NSString *TJImageCacheHash(NSString *string)
 
 #pragma mark - Cache Checking
 
-+ (TJImageCacheDepth)depthForImageAtURL:(NSString *const)urlString
-{
-    if ([_cache() objectForKey:urlString]) {
-        return TJImageCacheDepthMemory;
-    }
-    
-    __block BOOL isImageInMapTable = NO;
-    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-        isImageInMapTable = [mapTable objectForKey:urlString] != nil;
-    }, NO);
-    
-    if (isImageInMapTable) {
-        return TJImageCacheDepthMemory;
-    }
-    
-    NSString *const hash = TJImageCacheHash(urlString);
-    if ([[NSFileManager defaultManager] fileExistsAtPath:_pathForHash(hash)]) {
-        return TJImageCacheDepthDisk;
-    }
-    
-    return TJImageCacheDepthNetwork;
-}
-
 + (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
@@ -408,27 +375,9 @@ NSString *TJImageCacheHash(NSString *string)
 
 #pragma mark - Cache Manipulation
 
-+ (void)removeImageAtURL:(NSString *const)urlString
-{
-    [_cache() removeObjectForKey:urlString];
-    NSString *const path = _pathForHash(TJImageCacheHash(urlString));
-    NSNumber *fileSizeNumber;
-    [[NSURL fileURLWithPath:path] getResourceValue:&fileSizeNumber forKey:NSURLTotalFileSizeKey error:nil];
-    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
-        _modifyDeltaSize(-fileSizeNumber.longLongValue);
-    }
-}
-
 + (void)dumpMemoryCache
 {
     [_cache() removeAllObjects];
-}
-
-+ (void)dumpDiskCache
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return NO;
-    }];
 }
 
 #pragma mark - Cache Auditing
@@ -486,25 +435,6 @@ NSString *TJImageCacheHash(NSString *string)
             _setBaseCacheSize(totalFileSize);
         });
     });
-}
-
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block
-{
-    [self auditCacheWithBlock:block completionBlock:nil];
-}
-
-+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return ([createdDate compare:date] != NSOrderedAscending);
-    }];
-}
-
-+ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return ([lastAccess compare:date] != NSOrderedAscending);
-    }];
 }
 
 #pragma mark - Private
