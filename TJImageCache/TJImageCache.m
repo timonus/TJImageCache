@@ -315,36 +315,12 @@ static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegat
 
 #pragma mark - Cache Manipulation
 
-+ (void)removeImageAtURL:(NSString *const)urlString
-{
-    [_cache() removeObjectForKey:urlString];
-    NSString *const hash = TJImageCacheHash(urlString);
-    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-        [mapTable removeObjectForKey:hash];
-        [mapTable removeObjectForKey:urlString];
-    }, YES);
-    NSString *const path = _pathForHash(hash);
-    NSFileManager *const fileManager = [NSFileManager defaultManager];
-    NSNumber *fileSizeNumber;
-    [[NSURL fileURLWithPath:path] getResourceValue:&fileSizeNumber forKey:NSURLTotalFileSizeKey error:nil];
-    if ([fileManager removeItemAtPath:path error:nil]) {
-        _modifyDeltaSize(-fileSizeNumber.longLongValue);
-    }
-}
-
 + (void)dumpMemoryCache
 {
     [_cache() removeAllObjects];
     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         [mapTable removeAllObjects];
     }, YES);
-}
-
-+ (void)dumpDiskCache
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return NO;
-    }];
 }
 
 #pragma mark - Cache Auditing
@@ -384,25 +360,6 @@ static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegat
             _setBaseCacheSize(totalFileSize);
         });
     });
-}
-
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block
-{
-    [self auditCacheWithBlock:block completionBlock:nil];
-}
-
-+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return ([createdDate compare:date] != NSOrderedAscending);
-    }];
-}
-
-+ (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return ([lastAccess compare:date] != NSOrderedAscending);
-    }];
 }
 
 #pragma mark - Private
