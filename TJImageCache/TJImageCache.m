@@ -449,7 +449,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     if (canProcess) {
         if (path) {
             if (forceDecompress) {
-                image = _predrawnImageFromPath(path);
+                image = _decompressedImageFromPath(path);
             }
             if (!image) {
                 image = [IMAGE_CLASS imageWithContentsOfFile:path];
@@ -478,27 +478,21 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
 }
 
 // Modified version of https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
-static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
+static IMAGE_CLASS *_decompressedImageFromPath(NSString *const path)
 {
-    // Always use a device RGB color space for simplicity and predictability what will be going on.
-    static CGColorSpaceRef colorSpaceDeviceRGBRef;
-    static size_t numberOfComponents;
     static CFDictionaryRef options;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
-        
-        if (colorSpaceDeviceRGBRef) {
-            // Even when the image doesn't have transparency, we have to add the extra channel because Quartz doesn't support other pixel formats than 32 bpp/8 bpc for RGB:
-            // kCGImageAlphaNoneSkipFirst, kCGImageAlphaNoneSkipLast, kCGImageAlphaPremultipliedFirst, kCGImageAlphaPremultipliedLast
-            // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
-            numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
-        }
-        
-        options = (__bridge_retained CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanFalse};
+        // Decompress off main using ImageIO flags
+        // https://developer.apple.com/wwdc18/219
+        // https://www.objc.io/issues/5-ios7/iOS7-hidden-gems-and-workarounds/
+        options = (__bridge_retained CFDictionaryRef)@{
+            (__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanTrue,
+                                                       (__bridge NSString *)kCGImageSourceShouldCacheImmediately: (__bridge id)kCFBooleanTrue,
+        };
     });
     
-    const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], nil);
+    const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], options);
     if (!imageSource) {
         return nil;
     }
@@ -516,51 +510,10 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
         return nil;
     }
     
-    // "In iOS 4.0 and later, and OS X v10.6 and later, you can pass NULL if you want Quartz to allocate memory for the bitmap." (source: docs)
-    void *data = NULL;
-    const size_t width = CGImageGetWidth(image);
-    const size_t height = CGImageGetHeight(image);
-    static const size_t bitsPerComponent = CHAR_BIT;
     
-    const size_t bytesPerRow = (((bitsPerComponent * numberOfComponents) / 8) * width);
-    
-    CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
-    // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
-    // "For bitmaps created in iOS 3.2 and later, the drawing environment uses the premultiplied ARGB format to store the bitmap data." (source: docs)
-    if (alphaInfo == kCGImageAlphaNone || alphaInfo == kCGImageAlphaOnly) {
-        alphaInfo = kCGImageAlphaNoneSkipFirst;
-    } else if (alphaInfo == kCGImageAlphaFirst) {
-        // Hack to strip alpha
-        // http://stackoverflow.com/a/21416518/3943258
-        //        alphaInfo = kCGImageAlphaPremultipliedFirst;
-        alphaInfo = kCGImageAlphaNoneSkipFirst;
-    } else if (alphaInfo == kCGImageAlphaLast) {
-        // Hack to strip alpha
-        // http://stackoverflow.com/a/21416518/3943258
-        //        alphaInfo = kCGImageAlphaPremultipliedLast;
-        alphaInfo = kCGImageAlphaNoneSkipLast;
-    }
-    // "The constants for specifying the alpha channel information are declared with the `CGImageAlphaInfo` type but can be passed to this parameter safely." (source: docs)
-    const CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault | alphaInfo;
-    
-    // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
-    // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
-    
-    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
-    // Early return on failure!
-    if (!bitmapContextRef) {
-        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, bitsPerComponent, bytesPerRow, image);
-        return nil;
-    }
-    
-    // Draw image in bitmap context and create image by preserving receiver's properties.
-    CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, width, height), image);
-    const CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
-    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef];
+    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:image];
     CGImageRelease(image);
-    CGImageRelease(predrawnImageRef);
-    CGContextRelease(bitmapContextRef);
-    
+
     return predrawnImage;
 }
 
