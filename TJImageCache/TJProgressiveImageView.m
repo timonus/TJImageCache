@@ -80,8 +80,7 @@
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url
 {
-    NSOrderedSet<NSString *> *const imageURLStrings = self.imageURLStrings;
-    const NSInteger index = imageURLStrings ? [imageURLStrings indexOfObject:url] : NSNotFound;
+    const NSInteger index = _imageURLStrings ? [_imageURLStrings indexOfObject:url] : NSNotFound;
     if (index != NSNotFound && index < _currentImageURLStringIndex) {
         _currentImageURLStringIndex = index;
         self.image = image;
