@@ -17,7 +17,7 @@ static NSNumber *_tj_imageCacheApproximateCacheSize;
 
 @implementation TJImageCacheNoOpDelegate
 
-+ (void)didGetImage:(UIImage *)image atURL:(NSString *)url
++ (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
 {
     // intentional no-op
 }
