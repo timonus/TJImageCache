@@ -80,11 +80,19 @@
 
 - (void)didGetImage:(UIImage *)image atURL:(NSString *)url
 {
-    const NSInteger index = _imageURLStrings ? [_imageURLStrings indexOfObject:url] : NSNotFound;
-    if (index != NSNotFound && index < _currentImageURLStringIndex) {
-        _currentImageURLStringIndex = index;
-        self.image = image;
-    }
+    __block BOOL cancelLowPriImages = NO;
+    [_imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx < _currentImageURLStringIndex) {
+            if ([obj isEqualToString:url]) {
+                _currentImageURLStringIndex = idx;
+                self.image = image;
+                cancelLowPriImages = YES;
+            }
+        } else if (cancelLowPriImages) {
+            // Cancel any lower priority images
+            [TJImageCache cancelImageProcessingForURL:obj delegate:self];
+        }
+    }];
 }
 
 @end
