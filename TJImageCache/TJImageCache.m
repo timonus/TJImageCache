@@ -244,6 +244,8 @@ NSString *TJImageCacheHash(NSString *string)
                     });
                 }];
                 
+                task.countOfBytesClientExpectsToSend = 0;
+                
                 _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
                     [tasks setObject:task forKey:urlString];
                 });
