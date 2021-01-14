@@ -239,12 +239,12 @@ NSString *TJImageCacheHash(NSString *string)
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
                     }
                     
-                    _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                    _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
                         [tasks removeObjectForKey:urlString];
                     });
                 }];
                 
-                _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
                     [tasks setObject:task forKey:urlString];
                 });
                 
@@ -262,7 +262,7 @@ NSString *TJImageCacheHash(NSString *string)
 + (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
     if (_cancelImage(urlString, delegate)) {
-        _tasksForImageURLStringWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
+        _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
             [[tasks objectForKey:urlString] cancel];
         });
     }
@@ -496,7 +496,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
 }
 
 /// Keys are image URL strings
-static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
+static void _tasksForImageURLStringsWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
 {
     static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks;
     static dispatch_once_t token;
@@ -504,7 +504,7 @@ static void _tasksForImageURLStringWithBlock(void (^block)(NSMutableDictionary<N
     
     dispatch_once(&token, ^{
         tasks = [NSMutableDictionary new];
-        queue = dispatch_queue_create("TJImageCache._tasksForImageURLStringWithBlock", DISPATCH_QUEUE_SERIAL);
+        queue = dispatch_queue_create("TJImageCache._tasksForImageURLStringsWithBlock", DISPATCH_QUEUE_SERIAL);
     });
     
     dispatch_sync(queue, ^{
