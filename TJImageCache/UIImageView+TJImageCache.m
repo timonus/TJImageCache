@@ -51,7 +51,7 @@ static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
         objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
         self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self forceDecompress:forceDecompress];
         if (currentImageURLString) {
-            [TJImageCache cancelImageProcessingForURL:currentImageURLString delegate:self];
+            [TJImageCache cancelImageLoadForURL:currentImageURLString delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];
         }
     }
 }
@@ -61,12 +61,12 @@ static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
     return objc_getAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey);
 }
 
-- (void)tj_cancelImageLoad
+- (void)tj_cancelImageLoadWithPolicy:(const TJImageCacheCancellationPolicy)policy
 {
     if (!self.image) {
         NSString *urlString = [self tj_imageURLString];
         if (urlString) {
-            [TJImageCache cancelImageLoadForURL:urlString delegate:self];
+            [TJImageCache cancelImageLoadForURL:urlString delegate:self policy:policy];
         }
     }
 }

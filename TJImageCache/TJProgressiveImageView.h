@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setImageURLStrings:(NSOrderedSet<NSString *> * _Nullable)imageURLStrings secondaryImageDepth:(const TJImageCacheDepth)secondaryImageDepth;
 
-- (void)cancelImageLoads;
+- (void)cancelImageLoadsWithPolicy:(const TJImageCacheCancellationPolicy)policy;
 
 @end
 

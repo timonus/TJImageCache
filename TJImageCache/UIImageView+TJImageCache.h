@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)tj_setImageURLString:(nullable NSString *const)imageURLString forceDecompress:(const BOOL)forceDecompress;
 - (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth forceDecompress:(const BOOL)forceDecompress;
 
-- (void)tj_cancelImageLoad;
+- (void)tj_cancelImageLoadWithPolicy:(const TJImageCacheCancellationPolicy)policy;
 
 @end
 

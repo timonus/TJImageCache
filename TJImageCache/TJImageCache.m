@@ -261,25 +261,37 @@ NSString *TJImageCacheHash(NSString *string)
     return inMemoryImage;
 }
 
-+ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
++ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy
 {
-    if (_cancelImage(urlString, delegate)) {
+    if (_cancelImageProcessing(urlString, delegate)) {
+        // NOTE: Could potentially use -getTasksWithCompletionHandler: instead, however that's async.
         _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
-            [[tasks objectForKey:urlString] cancel];
+            NSURLSessionTask *const task = tasks[urlString];
+            if (task) {
+                switch (policy) {
+                    case TJImageCacheCancellationPolicyBeforeResponse:
+                        if (task.response) {
+                            break;
+                        }
+                    case TJImageCacheCancellationPolicyBeforeBody:
+                        if (task.countOfBytesReceived > 0) {
+                            break;
+                        }
+                    case TJImageCacheCancellationPolicyUnconditional:
+                        [task cancel];
+                    case TJImageCacheCancellationPolicyImageProcessing:
+                        break;
+                }
+            }
         });
     }
 }
 
-+ (void)cancelImageProcessingForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
-{
-    _cancelImage(urlString, delegate);
-}
-
-static BOOL _cancelImage(NSString *const urlString, const id<TJImageCacheDelegate>delegate)
+static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCacheDelegate>delegate)
 {
     __block BOOL cancelTask = NO;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
-        NSHashTable *const delegates = [requestDelegates objectForKey:urlString]; // todo: if urlString is nil do this for all pending loads.
+        NSHashTable *const delegates = [requestDelegates objectForKey:urlString];
         if (delegates) {
             [delegates removeObject:delegate];
             if (delegates.count == 0) {

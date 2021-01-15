@@ -11,6 +11,13 @@ typedef NS_CLOSED_ENUM(NSUInteger, TJImageCacheDepth) {
     TJImageCacheDepthNetwork
 };
 
+typedef NS_CLOSED_ENUM(NSUInteger, TJImageCacheCancellationPolicy) {
+    TJImageCacheCancellationPolicyImageProcessing,  // Only cancels image decompression, image is still downloaded
+    TJImageCacheCancellationPolicyBeforeResponse,   // Cancels request if a response hasn't yet been received
+    TJImageCacheCancellationPolicyBeforeBody,       // Cancels request if a body hasn't yet been received
+    TJImageCacheCancellationPolicyUnconditional,    // Cancels request unconditionally
+};
+
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol TJImageCacheDelegate <NSObject>
@@ -39,8 +46,7 @@ extern NSString *TJImageCacheHash(NSString *string);
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url depth:(const TJImageCacheDepth)depth;
 + (nullable IMAGE_CLASS *)imageAtURL:(NSString *const)url;
 
-+ (void)cancelImageLoadForURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate;
-+ (void)cancelImageProcessingForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate;
++ (void)cancelImageLoadForURL:(NSString *const)url delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy;
 
 + (TJImageCacheDepth)depthForImageAtURL:(NSString *const)url;
 

@@ -34,7 +34,7 @@
     if (imageURLStrings != _imageURLStrings && ![imageURLStrings isEqual:_imageURLStrings]) {
         for (NSString *str in _imageURLStrings) {
             if (![imageURLStrings containsObject:str]) {
-                [TJImageCache cancelImageProcessingForURL:str delegate:self];
+                [TJImageCache cancelImageLoadForURL:str delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];
             }
         }
         NSString *const priorImageURLString = _currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:_currentImageURLStringIndex] : nil;
@@ -65,11 +65,11 @@
     }
 }
 
-- (void)cancelImageLoads
+- (void)cancelImageLoadsWithPolicy:(const TJImageCacheCancellationPolicy)policy
 {
     [self.imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull urlString, NSUInteger idx, BOOL * _Nonnull stop) {
         if (idx < _currentImageURLStringIndex || _currentImageURLStringIndex == NSNotFound) {
-            [TJImageCache cancelImageLoadForURL:urlString delegate:self];
+            [TJImageCache cancelImageLoadForURL:urlString delegate:self policy:policy];
         } else {
             *stop = YES;
         }
@@ -90,7 +90,7 @@
             }
         } else if (cancelLowPriImages) {
             // Cancel any lower priority images
-            [TJImageCache cancelImageProcessingForURL:obj delegate:self];
+            [TJImageCache cancelImageLoadForURL:obj delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];
         }
     }];
 }
