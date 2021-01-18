@@ -182,10 +182,8 @@ NSString *TJImageCacheHash(NSString *string)
                     // Using NSURLCache would be redundant.
                     session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
                 });
-                
-                NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
-                [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
-                NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                                
+                void (^taskCompletionHandler)(NSURL *location, NSURLResponse *response, NSError *error) = ^(NSURL *location, NSURLResponse *response, NSError *error) {
                     BOOL validToProcess = location != nil;
                     if (validToProcess) {
                         BOOL validContentType;
@@ -224,7 +222,6 @@ NSString *TJImageCacheHash(NSString *string)
                                 [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
                             }
                         });
-                        
                         // Move resulting image into place.
                         success = [fileManager moveItemAtPath:location.path toPath:path error:nil];
                     } else {
@@ -234,15 +231,34 @@ NSString *TJImageCacheHash(NSString *string)
                     if (success) {
                         // Inform delegates about success
                         _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
+                        
+                        [_resumeDataCache() removeObjectForKey:urlString];
                     } else {
                         // Inform delegates about failure
                         _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                        
+                        NSData *const resumeData = error.userInfo[NSURLSessionDownloadTaskResumeData];
+                        if (resumeData) {
+                            NSLog(@"GOT ERROR RESUME DATA %@", urlString);
+                            [_resumeDataCache() setObject:resumeData forKey:urlString];
+                        }
                     }
                     
                     _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
                         [tasks removeObjectForKey:urlString];
                     });
-                }];
+                };
+                
+                NSData *const resumeData = [_resumeDataCache() objectForKey:urlString];
+                NSURLSessionDownloadTask *task;
+                if (resumeData) {
+                    NSLog(@"USING RESUME DATA %@", urlString);
+                    task = [session downloadTaskWithResumeData:resumeData completionHandler:taskCompletionHandler];
+                } else {
+                    NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
+                    [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
+                    task = [session downloadTaskWithRequest:request completionHandler:taskCompletionHandler];
+                }
                 
                 task.countOfBytesClientExpectsToSend = 0;
                 
@@ -261,8 +277,10 @@ NSString *TJImageCacheHash(NSString *string)
     return inMemoryImage;
 }
 
-+ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy
++ (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate policy:(TJImageCacheCancellationPolicy)policy
 {
+    policy = TJImageCacheCancellationPolicyUnconditional;
+    
     if (_cancelImageProcessing(urlString, delegate)) {
         // NOTE: Could potentially use -getTasksWithCompletionHandler: instead, however that's async.
         _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
@@ -277,8 +295,16 @@ NSString *TJImageCacheHash(NSString *string)
                         if (task.countOfBytesReceived > 0) {
                             break;
                         }
-                    case TJImageCacheCancellationPolicyUnconditional:
-                        [task cancel];
+                    case TJImageCacheCancellationPolicyUnconditional: {
+                        [(NSURLSessionDownloadTask *)task cancelByProducingResumeData:^(NSData * _Nullable resumeData) {
+                            if (resumeData) {
+                                NSLog(@"GOT CANCEL RESUME DATA %@", urlString);
+                                [_resumeDataCache() setObject:resumeData forKey:urlString];
+                            } else {
+                                NSLog(@"NIL CANCEL RESUME DATA %@", urlString);
+                            }
+                        }];
+                    }
                     case TJImageCacheCancellationPolicyImageProcessing:
                         break;
                 }
@@ -414,6 +440,19 @@ static NSString *_pathForHash(NSString *const hash)
 static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
 {
     static NSCache<NSString *, IMAGE_CLASS *> *cache;
+    static dispatch_once_t token;
+    
+    dispatch_once(&token, ^{
+        cache = [NSCache new];
+    });
+    
+    return cache;
+}
+
+/// Keys are image URL strings, NOT hashes
+static NSCache<NSString *, NSData *> *_resumeDataCache(void)
+{
+    static NSCache<NSString *, NSData *> *cache;
     static dispatch_once_t token;
     
     dispatch_once(&token, ^{
