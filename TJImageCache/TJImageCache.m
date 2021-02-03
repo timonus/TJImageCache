@@ -10,14 +10,16 @@ static NSNumber *_tj_imageCacheBaseSize;
 static long long _tj_imageCacheDeltaSize;
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
-// DO NOT mark as Obj-C direct, will lead to exceptions.
-@interface TJImageCacheNoOpDelegate : NSObject
+#if defined(__has_attribute) && __has_attribute(objc_direct_members)
+__attribute__((objc_direct_members))
+#endif
+@interface TJImageCacheNoOpDelegate : NSObject <TJImageCacheDelegate>
 
 @end
 
 @implementation TJImageCacheNoOpDelegate
 
-+ (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
+- (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
 {
     // intentional no-op
 }
@@ -144,8 +146,13 @@ NSString *TJImageCacheHash(NSString *string)
             if (delegate) {
                 [delegatesForRequest addObject:delegate];
             } else {
-                // Since this request was started without a delegate, we add ourself as a no-op delegate to ensure that future calls to -cancelImageLoadForURL:delegate: won't inadvertently cancel it.
-                [delegatesForRequest addObject:[TJImageCacheNoOpDelegate class]];
+                // Since this request was started without a delegate, we add a no-op delegate to ensure that future calls to -cancelImageLoadForURL:delegate: won't inadvertently cancel it.
+                static TJImageCacheNoOpDelegate *noOpDelegate;
+                static dispatch_once_t onceToken;
+                dispatch_once(&onceToken, ^{
+                    noOpDelegate = [TJImageCacheNoOpDelegate new];
+                });
+                [delegatesForRequest addObject:noOpDelegate];
             }
         });
     }
