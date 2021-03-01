@@ -573,6 +573,17 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         _modifyDeltaSize(size);
     });
+    
+    // Per this WWDC talk, dump as much memory as possible when entering the background to avoid jetsam.
+    // https://developer.apple.com/videos/play/wwdc2020/10078/?t=333
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        void (^emptyCacheBlock)(NSNotification *) = ^(NSNotification * _Nonnull note) {
+            [TJImageCache dumpMemoryCache];
+        };
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:nil usingBlock:emptyCacheBlock];
+        [[NSNotificationCenter defaultCenter] addObserverForName:NSExtensionHostDidEnterBackgroundNotification object:nil queue:nil usingBlock:emptyCacheBlock];
+    });
 }
 
 // Modified version of https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
