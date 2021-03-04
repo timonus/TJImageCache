@@ -401,7 +401,7 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
                 long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
                 __block BOOL isInUse = NO;
                 _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                    isInUse = [mapTable objectForKey:file] != nil;
+                    isInUse = [mapTable objectForKey:[file substringToIndex:9]] != nil;
                 }, NO);
                 BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
@@ -475,8 +475,9 @@ static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
 
 /// Every image maps to two keys in this map table.
 /// { image URL string -> image,
-///   image URL string hash -> image }
-/// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on disk lookups)
+///   image URL string hash truncated to 9 characters -> image }
+/// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on-disk lookups)
+/// Hashes are truncated to 9 characters so they'll fit into tagged pointer strings https://www.mikeash.com/pyblog/friday-qa-2015-07-31-tagged-pointer-strings.html.
 static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable), const BOOL blockIsWriteOnly)
 {
     static NSMapTable<NSString *, IMAGE_CLASS *> *mapTable;
@@ -556,7 +557,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         if (image) {
             [_cache() setObject:image forKey:urlString];
             _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                [mapTable setObject:image forKey:hash];
+                [mapTable setObject:image forKey:[hash substringToIndex:9]];
                 [mapTable setObject:image forKey:urlString];
             }, YES);
         }
