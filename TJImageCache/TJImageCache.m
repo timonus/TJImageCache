@@ -57,12 +57,11 @@ __attribute__((objc_direct_members))
 
 NSString *TJImageCacheHash(NSString *string)
 {
-    const char *str = [string UTF8String];
     unsigned char result[CC_MD5_DIGEST_LENGTH];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     // MD5 deprecated in iOS 13 for security use, but still fine for us.
-    CC_MD5(str, (CC_LONG)strlen(str), result);
+    CC_MD5([string UTF8String], (CC_LONG)string.length, result);
 #pragma clang diagnostic pop
     
     return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
