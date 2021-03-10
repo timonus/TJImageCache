@@ -373,9 +373,6 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
 + (void)dumpMemoryCache
 {
     [_cache() removeAllObjects];
-    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-        [mapTable removeAllObjects];
-    }, YES);
 }
 
 + (void)dumpDiskCache
