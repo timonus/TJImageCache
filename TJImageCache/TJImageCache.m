@@ -355,12 +355,7 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
 + (void)removeImageAtURL:(NSString *const)urlString
 {
     [_cache() removeObjectForKey:urlString];
-    NSString *const hash = TJImageCacheHash(urlString);
-    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-        [mapTable removeObjectForKey:hash];
-        [mapTable removeObjectForKey:urlString];
-    }, YES);
-    NSString *const path = _pathForHash(hash);
+    NSString *const path = _pathForHash(TJImageCacheHash(urlString));
     NSFileManager *const fileManager = [NSFileManager defaultManager];
     NSNumber *fileSizeNumber;
     [[NSURL fileURLWithPath:path] getResourceValue:&fileSizeNumber forKey:NSURLTotalFileSizeKey error:nil];
