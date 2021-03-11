@@ -396,8 +396,9 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
                 long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
                 __block BOOL isInUse = NO;
+                NSString *const key = [file substringToIndex:9];
                 _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                    isInUse = [mapTable objectForKey:[file substringToIndex:9]] != nil;
+                    isInUse = [mapTable objectForKey:key] != nil;
                 }, NO);
                 BOOL wasRemoved = NO;
                 if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
@@ -552,8 +553,9 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         if (image) {
             [_cache() setObject:image forKey:urlString];
+            NSString *const key = [hash substringToIndex:9];
             _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                [mapTable setObject:image forKey:[hash substringToIndex:9]];
+                [mapTable setObject:image forKey:key];
                 [mapTable setObject:image forKey:urlString];
             }, YES);
         }
