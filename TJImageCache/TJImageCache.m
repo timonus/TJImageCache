@@ -192,27 +192,21 @@ NSString *TJImageCacheHash(NSString *string)
                 NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
                 [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
                 NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
-                    BOOL validToProcess = location != nil;
+                    BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
                     if (validToProcess) {
-                        BOOL validContentType;
-                        if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
-                            NSString *contentType;
-                            static NSString *const kContentTypeResponseHeaderKey = @"Content-Type";
+                        NSString *contentType;
+                        static NSString *const kContentTypeResponseHeaderKey = @"Content-Type";
 #if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
-                            if (@available(iOS 13.0, *)) {
+                        if (@available(iOS 13.0, *)) {
 #endif
-                                // -valueForHTTPHeaderField: is more "correct" since it's case-insensitive, however it's only available in iOS 13+.
-                                contentType = [(NSHTTPURLResponse *)response valueForHTTPHeaderField:kContentTypeResponseHeaderKey];
+                            // -valueForHTTPHeaderField: is more "correct" since it's case-insensitive, however it's only available in iOS 13+.
+                            contentType = [(NSHTTPURLResponse *)response valueForHTTPHeaderField:kContentTypeResponseHeaderKey];
 #if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
-                            } else {
-                                contentType = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:kContentTypeResponseHeaderKey];
-                            }
-#endif
-                            validContentType = [contentType hasPrefix:@"image/"];
                         } else {
-                            validContentType = NO;
+                            contentType = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:kContentTypeResponseHeaderKey];
                         }
-                        validToProcess = validContentType;
+#endif
+                        validToProcess = [contentType hasPrefix:@"image/"];
                     }
                     
                     BOOL success;
