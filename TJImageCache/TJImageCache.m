@@ -349,10 +349,9 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
 {
     [_cache() removeObjectForKey:urlString];
     NSString *const path = _pathForHash(TJImageCacheHash(urlString));
-    NSFileManager *const fileManager = [NSFileManager defaultManager];
     NSNumber *fileSizeNumber;
     [[NSURL fileURLWithPath:path] getResourceValue:&fileSizeNumber forKey:NSURLTotalFileSizeKey error:nil];
-    if ([fileManager removeItemAtPath:path error:nil]) {
+    if ([[NSFileManager defaultManager] removeItemAtPath:path error:nil]) {
         _modifyDeltaSize(-fileSizeNumber.longLongValue);
     }
 }
