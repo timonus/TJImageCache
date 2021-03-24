@@ -92,22 +92,22 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil forceDecompress:NO];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil forceDecompress:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth
 {
-    return [self imageAtURL:urlString depth:depth delegate:nil forceDecompress:NO];
+    return [self imageAtURL:urlString depth:depth delegate:nil forceDecompress:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate forceDecompress:NO];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate forceDecompress:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:depth delegate:delegate forceDecompress:NO];
+    return [self imageAtURL:urlString depth:depth delegate:delegate forceDecompress:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress
