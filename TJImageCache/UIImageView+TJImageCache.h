@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface UIImageView (TJImageCache)
 
-@property (nonatomic, copy, nullable) NSString *tj_imageURLString;
+@property (nonatomic, copy, nullable, setter=tj_setImageURLString:) NSString *tj_imageURLString;
 
 - (void)tj_setImageURLString:(nullable NSString *const)imageURLString forceDecompress:(const BOOL)forceDecompress;
 - (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth forceDecompress:(const BOOL)forceDecompress;

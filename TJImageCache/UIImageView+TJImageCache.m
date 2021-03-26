@@ -34,7 +34,7 @@ static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLStrin
 
 #pragma mark - Getters and Setters
 
-- (void)setTj_imageURLString:(NSString *)imageURLString
+- (void)tj_setImageURLString:(NSString *)imageURLString
 {
     [self tj_setImageURLString:imageURLString depth:TJImageCacheDepthNetwork forceDecompress:YES];
 }
