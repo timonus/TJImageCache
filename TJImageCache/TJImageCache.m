@@ -615,36 +615,32 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     void *data = NULL;
     const size_t width = CGImageGetWidth(image);
     const size_t height = CGImageGetHeight(image);
-    static const size_t bitsPerComponent = CHAR_BIT;
     
-    const size_t bytesPerRow = (((bitsPerComponent * numberOfComponents) / 8) * width);
+    const size_t bytesPerRow = (((CHAR_BIT * numberOfComponents) / 8) * width);
     
     CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
     // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
     // "For bitmaps created in iOS 3.2 and later, the drawing environment uses the premultiplied ARGB format to store the bitmap data." (source: docs)
-    if (alphaInfo == kCGImageAlphaNone || alphaInfo == kCGImageAlphaOnly) {
-        alphaInfo = kCGImageAlphaNoneSkipFirst;
-    } else if (alphaInfo == kCGImageAlphaFirst) {
-        // Hack to strip alpha
-        // http://stackoverflow.com/a/21416518/3943258
-        //        alphaInfo = kCGImageAlphaPremultipliedFirst;
-        alphaInfo = kCGImageAlphaNoneSkipFirst;
-    } else if (alphaInfo == kCGImageAlphaLast) {
-        // Hack to strip alpha
-        // http://stackoverflow.com/a/21416518/3943258
-        //        alphaInfo = kCGImageAlphaPremultipliedLast;
-        alphaInfo = kCGImageAlphaNoneSkipLast;
+    switch (alphaInfo) {
+        case kCGImageAlphaNone:
+        case kCGImageAlphaOnly:
+        case kCGImageAlphaFirst:
+            alphaInfo = kCGImageAlphaNoneSkipFirst;
+            break;
+        case kCGImageAlphaLast:
+            alphaInfo = kCGImageAlphaNoneSkipLast;
+            break;
+        default:
+            break;
     }
-    // "The constants for specifying the alpha channel information are declared with the `CGImageAlphaInfo` type but can be passed to this parameter safely." (source: docs)
-    const CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault | alphaInfo;
     
     // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
     // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
     
-    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, bitsPerComponent, bytesPerRow, colorSpaceDeviceRGBRef, bitmapInfo);
+    const CGContextRef bitmapContextRef = CGBitmapContextCreate(data, width, height, CHAR_BIT, bytesPerRow, colorSpaceDeviceRGBRef, kCGBitmapByteOrderDefault | alphaInfo);
     // Early return on failure!
     if (!bitmapContextRef) {
-        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, bitsPerComponent, bytesPerRow, image);
+        NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, (size_t)CHAR_BIT, bytesPerRow, image);
         return nil;
     }
     
