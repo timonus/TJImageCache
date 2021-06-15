@@ -128,7 +128,7 @@ NSString *TJImageCacheHash(NSString *string)
         }, NO);
         if (inMemoryImage) {
             // Propagate back into our cache.
-            [_cache() setObject:inMemoryImage forKey:urlString];
+            [_cache() setObject:inMemoryImage forKey:urlString cost:inMemoryImage.size.width * inMemoryImage.size.height];
         }
     }
     
@@ -539,7 +539,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
             }
         }
         if (image) {
-            [_cache() setObject:image forKey:urlString];
+            [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
             NSString *const key = [hash substringToIndex:9];
             _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                 [mapTable setObject:image forKey:key];
