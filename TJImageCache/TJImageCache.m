@@ -586,6 +586,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     static CGColorSpaceRef colorSpaceDeviceRGBRef;
     static size_t numberOfComponents;
     static CFDictionaryRef options;
+    static size_t bytesPerPixel;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
@@ -598,6 +599,8 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
         }
         
         options = (__bridge_retained CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanFalse};
+        
+        bytesPerPixel = (CHAR_BIT * numberOfComponents) << 3;
     });
     
     const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path isDirectory:NO], nil);
@@ -623,7 +626,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     const size_t width = CGImageGetWidth(image);
     const size_t height = CGImageGetHeight(image);
     
-    const size_t bytesPerRow = (((CHAR_BIT * numberOfComponents) / 8) * width);
+    const size_t bytesPerRow = bytesPerPixel * width;
     
     CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
     // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
