@@ -584,23 +584,11 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
 {
     // Always use a device RGB color space for simplicity and predictability what will be going on.
     static CGColorSpaceRef colorSpaceDeviceRGBRef;
-    static size_t numberOfComponents;
     static CFDictionaryRef options;
-    static size_t bytesPerPixel;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         colorSpaceDeviceRGBRef = CGColorSpaceCreateDeviceRGB();
-        
-        if (colorSpaceDeviceRGBRef) {
-            // Even when the image doesn't have transparency, we have to add the extra channel because Quartz doesn't support other pixel formats than 32 bpp/8 bpc for RGB:
-            // kCGImageAlphaNoneSkipFirst, kCGImageAlphaNoneSkipLast, kCGImageAlphaPremultipliedFirst, kCGImageAlphaPremultipliedLast
-            // (source: docs "Quartz 2D Programming Guide > Graphics Contexts > Table 2-1 Pixel formats supported for bitmap graphics contexts")
-            numberOfComponents = CGColorSpaceGetNumberOfComponents(colorSpaceDeviceRGBRef) + 1; // 4: RGB + A
-        }
-        
         options = (__bridge_retained CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanFalse};
-        
-        bytesPerPixel = (CHAR_BIT * numberOfComponents) >> 3;
     });
     
     const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path isDirectory:NO], nil);
@@ -626,7 +614,8 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     const size_t width = CGImageGetWidth(image);
     const size_t height = CGImageGetHeight(image);
     
-    const size_t bytesPerRow = bytesPerPixel * width;
+    // RGB+A
+    const size_t bytesPerRow = width << 2;
     
     CGImageAlphaInfo alphaInfo = CGImageGetAlphaInfo(image);
     // If the alpha info doesn't match to one of the supported formats (see above), pick a reasonable supported one.
