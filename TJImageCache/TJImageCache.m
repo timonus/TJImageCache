@@ -600,7 +600,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
         
         options = (__bridge_retained CFDictionaryRef)@{(__bridge NSString *)kCGImageSourceShouldCache: (__bridge id)kCFBooleanFalse};
         
-        bytesPerPixel = (CHAR_BIT * numberOfComponents) << 3;
+        bytesPerPixel = (CHAR_BIT * numberOfComponents) >> 3;
     });
     
     const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path isDirectory:NO], nil);
