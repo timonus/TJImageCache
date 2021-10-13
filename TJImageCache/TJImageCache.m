@@ -592,18 +592,11 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     });
     
     const CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path isDirectory:NO], nil);
-    if (!imageSource) {
-        return nil;
-    }
-    
-    if (CGImageSourceGetCount(imageSource) == 0) {
-        CFRelease(imageSource);
-        return nil;
-    }
-    
     const CGImageRef image = CGImageSourceCreateImageAtIndex(imageSource, 0, options);
     
-    CFRelease(imageSource);
+    if (imageSource) {
+        CFRelease(imageSource);
+    }
     
     if (!image) {
         return nil;
