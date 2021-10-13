@@ -632,6 +632,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     // Early return on failure!
     if (!bitmapContextRef) {
         NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, (size_t)CHAR_BIT, bytesPerRow, image);
+        CGImageRelease(image);
         return nil;
     }
     
