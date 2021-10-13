@@ -645,7 +645,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     // Draw image in bitmap context and create image by preserving receiver's properties.
     CGContextDrawImage(bitmapContextRef, CGRectMake(0.0, 0.0, width, height), image);
     const CGImageRef predrawnImageRef = CGBitmapContextCreateImage(bitmapContextRef);
-    IMAGE_CLASS *predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef];
+    IMAGE_CLASS *const predrawnImage = [IMAGE_CLASS imageWithCGImage:predrawnImageRef];
     CGImageRelease(image);
     CGImageRelease(predrawnImageRef);
     CGContextRelease(bitmapContextRef);
