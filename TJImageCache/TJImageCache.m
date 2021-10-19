@@ -582,6 +582,12 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
 // Modified version of https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
 static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
 {
+#if defined(__IPHONE_15_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_15_0
+    if (@available(iOS 15.0, *)) {
+        return [[UIImage imageWithContentsOfFile:path] imageByPreparingForDisplay];
+    }
+#endif
+    
     // Always use a device RGB color space for simplicity and predictability what will be going on.
     static CGColorSpaceRef colorSpaceDeviceRGBRef;
     static CFDictionaryRef options;
