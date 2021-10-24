@@ -4,6 +4,7 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
+#define TJIMAGECACHE_USE_SHA256 0
 #define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 0
 
 static NSString *_tj_imageCacheRootPath;
@@ -59,12 +60,17 @@ __attribute__((objc_direct_members))
 
 NSString *TJImageCacheHash(NSString *string)
 {
+#if TJIMAGECACHE_USE_SHA256
+    unsigned char result[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
+#else
     unsigned char result[CC_MD5_DIGEST_LENGTH];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     // MD5 deprecated in iOS 13 for security use, but still fine for us.
     CC_MD5([string UTF8String], (CC_LONG)string.length, result);
 #pragma clang diagnostic pop
+#endif
     
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
     static const char *table = "eilotrmapdnsIcufkMShjTRxgC4013"; // 11 digits accepted
