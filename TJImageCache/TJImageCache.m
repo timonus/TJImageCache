@@ -4,6 +4,8 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
+#define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 0
+
 static NSString *_tj_imageCacheRootPath;
 
 static NSNumber *_tj_imageCacheBaseSize;
@@ -64,6 +66,22 @@ NSString *TJImageCacheHash(NSString *string)
     CC_MD5([string UTF8String], (CC_LONG)string.length, result);
 #pragma clang diagnostic pop
     
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+    static const char *table = "eilotrmapdnsIcufkMShjTRxgC4013"; // 11 digits accepted
+    return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
+            table[result[0] % 30],
+            table[result[1] % 30],
+            table[result[2] % 30],
+            table[result[3] % 30],
+            table[result[4] % 30],
+            table[result[5] % 30],
+            table[result[6] % 30],
+            table[result[7] % 30],
+            table[result[8] % 30],
+            table[result[9] % 30],
+            table[result[10] % 30]
+            ];
+#else
     return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0],
             result[1],
@@ -81,6 +99,7 @@ NSString *TJImageCacheHash(NSString *string)
             result[13],
             result[14],
             result[15]];
+#endif
 }
 
 + (NSString *)pathForURLString:(NSString *const)urlString
@@ -390,7 +409,12 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
                 NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
                 long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
                 __block BOOL isInUse = NO;
-                NSString *const key = [file substringToIndex:9];
+                NSString *const key =
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+                file;
+#else
+                [file substringToIndex:9];
+#endif
                 _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                     isInUse = [mapTable objectForKey:key] != nil;
                 }, NO);
@@ -547,7 +571,12 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         if (image) {
             [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
-            NSString *const key = [hash substringToIndex:9];
+            NSString *const key =
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+            hash;
+#else
+            [hash substringToIndex:9];
+#endif
             _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                 [mapTable setObject:image forKey:key];
                 [mapTable setObject:image forKey:urlString];
