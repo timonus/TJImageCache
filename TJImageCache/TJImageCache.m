@@ -410,28 +410,31 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
         long long totalFileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
-                NSDictionary *attributes = [enumerator fileAttributes];
-                NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
-                NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
-                long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
-                __block BOOL isInUse = NO;
-                NSString *const key =
+                __block BOOL preserve =
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                file;
+                file.length < 12;
 #else
-                [file substringToIndex:9];
+                YES;
 #endif
-                _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                    isInUse = [mapTable objectForKey:key] != nil;
-                }, NO);
-                BOOL wasRemoved = NO;
-                if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
-                    NSString *const path = _pathForHash(file);
-                    if ([fileManager removeItemAtPath:path error:nil]) {
-                        wasRemoved = YES;
-                    }
+                
+                if (preserve) {
+                    NSString *const key =
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+                    [file substringToIndex:9];
+#else
+                    file;
+#endif
+                    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+                        preserve = [mapTable objectForKey:key] == nil;
+                    }, NO);
                 }
-                if (!wasRemoved) {
+                
+                NSDictionary *const attributes = enumerator.fileAttributes;
+                const long long fileSize = attributes.fileSize;
+                if (preserve) {
+                    preserve = block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize);
+                }
+                if (preserve || ![fileManager removeItemAtPath:_pathForHash(file) error:nil]) {
                     totalFileSize += fileSize;
                 }
             }
