@@ -4,8 +4,8 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
-#define TJIMAGECACHE_USE_SHA256 0
-#define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 0
+#define TJIMAGECACHE_USE_SHA256 1
+#define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 1
 
 static NSString *_tj_imageCacheRootPath;
 
