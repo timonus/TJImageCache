@@ -257,7 +257,15 @@ NSString *TJImageCacheHash(NSString *string)
                         });
                         
                         // Move resulting image into place.
-                        success = [fileManager moveItemAtPath:location.path toPath:path error:nil];
+                        NSError *error;
+                        if (![fileManager moveItemAtPath:location.path toPath:path error:&error]) {
+                            // Still consider this a success if the file already exists.
+                            success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
+                            && [error.domain isEqualToString:NSCocoaErrorDomain];
+                            NSAssert(!success, @"Loaded file that already exists! %@ -> %@", urlString, hash);
+                        } else {
+                            success = YES;
+                        }
                     } else {
                         success = NO;
                     }
