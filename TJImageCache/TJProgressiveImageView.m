@@ -93,6 +93,8 @@
         } else if (cancelLowPriImages) {
             // Cancel any lower priority images
             [TJImageCache cancelImageLoadForURL:obj delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];
+        } else {
+            *stop = YES;
         }
     }];
 }
