@@ -216,12 +216,6 @@ NSString *TJImageCacheHash(NSString *string)
                 
                 NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
                 [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
-#if defined(__IPHONE_15_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_15_0
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_15_0
-                if (@available(iOS 15.0, *))
-#endif
-                    request.attribution = NSURLRequestAttributionUser;
-#endif
 
                 NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
                     BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
