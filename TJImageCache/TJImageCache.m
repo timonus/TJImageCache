@@ -419,15 +419,15 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
                 YES;
 #endif
                 
-                if (!preserve) {
+                if (preserve) {
                     NSString *const key =
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                    file;
-#else
                     [file substringToIndex:9];
+#else
+                    file;
 #endif
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                        preserve = [mapTable objectForKey:key] != nil;
+                        preserve = [mapTable objectForKey:key] == nil;
                     }, NO);
                 }
                 
