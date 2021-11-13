@@ -412,22 +412,32 @@ static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCa
         long long totalFileSize = 0;
         for (NSString *file in enumerator) {
             @autoreleasepool {
-                NSDictionary *attributes = [enumerator fileAttributes];
-                NSDate *createdDate = [attributes objectForKey:NSFileCreationDate];
-                NSDate *lastAccess = [attributes objectForKey:NSFileModificationDate];
-                long long fileSize = [[attributes objectForKey:NSFileSize] longLongValue];
+                NSDictionary *const attributes = enumerator.fileAttributes;
+                long long fileSize = attributes.fileSize;
                 __block BOOL isInUse = NO;
-                NSString *const key =
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                file;
-#else
-                [file substringToIndex:9];
+                // When TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH is enabled all valid entries have a max length of 11, so we know anything greater is not in use.
+                if (file.length < 12)
 #endif
-                _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                    isInUse = [mapTable objectForKey:key] != nil;
-                }, NO);
+                {
+                    NSString *const key =
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+                    file;
+#else
+                    [file substringToIndex:9];
+#endif
+                    _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+                        isInUse = [mapTable objectForKey:key] != nil;
+                    }, NO);
+                }
+                
                 BOOL wasRemoved = NO;
-                if (!isInUse && !block(file, lastAccess, createdDate, fileSize)) {
+                if (!isInUse && (
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+                                 // When TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH is enabled all valid entries have a max length of 11, so we know anything greater should be removed.
+                                 file.length > 11 ||
+#endif
+                                 !block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize))) {
                     NSString *const path = _pathForHash(file);
                     if ([fileManager removeItemAtPath:path error:nil]) {
                         wasRemoved = YES;
