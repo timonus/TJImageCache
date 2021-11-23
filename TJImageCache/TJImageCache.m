@@ -296,44 +296,40 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy
 {
-    if (_cancelImageProcessing(urlString, delegate)) {
-        // NOTE: Could potentially use -getTasksWithCompletionHandler: instead, however that's async.
-        _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
-            NSURLSessionTask *const task = tasks[urlString];
-            if (task) {
-                switch (policy) {
-                    case TJImageCacheCancellationPolicyBeforeResponse:
-                        if (task.response) {
-                            break;
-                        }
-                    case TJImageCacheCancellationPolicyBeforeBody:
-                        if (task.countOfBytesReceived > 0) {
-                            break;
-                        }
-                    case TJImageCacheCancellationPolicyUnconditional:
-                        [task cancel];
-                    case TJImageCacheCancellationPolicyImageProcessing:
-                        break;
-                }
-            }
-        });
-    }
-}
-
-static BOOL _cancelImageProcessing(NSString *const urlString, const id<TJImageCacheDelegate>delegate)
-{
-    __block BOOL cancelTask = NO;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+        BOOL cancelTask = NO;
         NSHashTable *const delegates = [requestDelegates objectForKey:urlString];
         if (delegates) {
             [delegates removeObject:delegate];
             if (delegates.count == 0) {
-                [requestDelegates removeObjectForKey:urlString];
                 cancelTask = YES;
             }
         }
+        if (cancelTask && policy != TJImageCacheCancellationPolicyImageProcessing) {
+            // NOTE: Could potentially use -getTasksWithCompletionHandler: instead, however that's async.
+            _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDataTask *> *const tasks) {
+                NSURLSessionTask *const task = tasks[urlString];
+                if (task) {
+                    switch (policy) {
+                        case TJImageCacheCancellationPolicyBeforeResponse:
+                            if (task.response) {
+                                break;
+                            }
+                        case TJImageCacheCancellationPolicyBeforeBody:
+                            if (task.countOfBytesReceived > 0) {
+                                break;
+                            }
+                        case TJImageCacheCancellationPolicyUnconditional:
+                            [task cancel];
+                            [requestDelegates removeObjectForKey:urlString];
+                        case TJImageCacheCancellationPolicyImageProcessing:
+                            NSAssert(NO, @"This should never be reached");
+                            break;
+                    }
+                }
+            });
+        }
     });
-    return cancelTask;
 }
 
 #pragma mark - Cache Checking
