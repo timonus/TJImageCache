@@ -322,6 +322,7 @@ NSString *TJImageCacheHash(NSString *string)
                         case TJImageCacheCancellationPolicyUnconditional:
                             [task cancel];
                             [requestDelegates removeObjectForKey:urlString];
+                            break;
                         case TJImageCacheCancellationPolicyImageProcessing:
                             NSAssert(NO, @"This should never be reached");
                             break;
