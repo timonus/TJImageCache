@@ -183,14 +183,14 @@ NSString *TJImageCacheHash(NSString *string)
     
     // Attempt load from disk and network.
     if (loadAsynchronously) {
-        static dispatch_queue_t readQueue;
+        static dispatch_queue_t asyncDispatchQueue;
         static NSFileManager *fileManager;
         static dispatch_once_t readOnceToken;
         dispatch_once(&readOnceToken, ^{
-            readQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
+            asyncDispatchQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
             fileManager = [NSFileManager defaultManager];
         });
-        dispatch_async(readQueue, ^{
+        dispatch_async(asyncDispatchQueue, ^{
             NSString *const hash = TJImageCacheHash(urlString);
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
@@ -205,9 +205,16 @@ NSString *TJImageCacheHash(NSString *string)
                 static NSURLSession *session;
                 static dispatch_once_t sessionOnceToken;
                 dispatch_once(&sessionOnceToken, ^{
+                    static NSOperationQueue *asyncOperationQueue;
+                    asyncOperationQueue = [NSOperationQueue new];
+                    asyncOperationQueue.maxConcurrentOperationCount = NSOperationQueueDefaultMaxConcurrentOperationCount;
+                    asyncOperationQueue.underlyingQueue = asyncDispatchQueue;
+                    
                     // We use an ephemeral session since TJImageCache does memory and disk caching.
                     // Using NSURLCache would be redundant.
-                    session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+                    session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]
+                                                            delegate:nil
+                                                       delegateQueue:asyncOperationQueue];
                 });
                 
                 NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
