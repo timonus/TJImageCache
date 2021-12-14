@@ -87,6 +87,40 @@ NSString *TJImageCacheHash(NSString *string)
             table[result[9] % 30],
             table[result[10] % 30]
             ];
+#elif TJIMAGECACHE_USE_SHA256
+    return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            result[0],
+            result[1],
+            result[2],
+            result[3],
+            result[4],
+            result[5],
+            result[6],
+            result[7],
+            result[8],
+            result[9],
+            result[10],
+            result[11],
+            result[12],
+            result[13],
+            result[14],
+            result[15],
+            result[16],
+            result[17],
+            result[18],
+            result[19],
+            result[20],
+            result[21],
+            result[22],
+            result[23],
+            result[24],
+            result[25],
+            result[26],
+            result[27],
+            result[28],
+            result[29],
+            result[30],
+            result[31]];
 #else
     return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0],
@@ -405,16 +439,22 @@ NSString *TJImageCacheHash(NSString *string)
         NSFileManager *const fileManager = [NSFileManager defaultManager];
         NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtPath:_rootPath()];
         long long totalFileSize = 0;
+        static const NSUInteger kExpectedFilenameLength =
+#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
+        11
+#elif TJIMAGECACHE_USE_SHA256
+        64
+#else
+        32
+#endif
+        ;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *const attributes = enumerator.fileAttributes;
                 long long fileSize = attributes.fileSize;
-                __block BOOL isInUse = NO;
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                // When TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH is enabled all valid entries have a max length of 11, so we know anything greater is not in use.
-                if (file.length < 12)
-#endif
-                {
+                BOOL remove;
+                if (file.length == kExpectedFilenameLength) {
+                    __block BOOL isInUse = NO;
                     NSString *const key =
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
                     file;
@@ -424,19 +464,15 @@ NSString *TJImageCacheHash(NSString *string)
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                         isInUse = [mapTable objectForKey:key] != nil;
                     }, NO);
+                    remove = !isInUse && !block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize);
+                } else {
+                    remove = YES;
                 }
-                
-                BOOL wasRemoved = NO;
-                if (!isInUse && (
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                                 // When TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH is enabled all valid entries have a max length of 11, so we know anything greater should be removed.
-                                 file.length > 11 ||
-#endif
-                                 !block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize))) {
-                    NSString *const path = _pathForHash(file);
-                    if ([fileManager removeItemAtPath:path error:nil]) {
-                        wasRemoved = YES;
-                    }
+                BOOL wasRemoved;
+                if (remove) {
+                    wasRemoved = [fileManager removeItemAtPath:_pathForHash(file) error:nil];
+                } else {
+                    wasRemoved = NO;
                 }
                 if (!wasRemoved) {
                     totalFileSize += fileSize;
