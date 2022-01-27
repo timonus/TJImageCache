@@ -13,13 +13,13 @@ static NSNumber *_tj_imageCacheBaseSize;
 static long long _tj_imageCacheDeltaSize;
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
-#if defined(__has_attribute) && __has_attribute(objc_direct_members)
-__attribute__((objc_direct_members))
-#endif
 @interface TJImageCacheNoOpDelegate : NSObject <TJImageCacheDelegate>
 
 @end
 
+#if defined(__has_attribute) && __has_attribute(objc_direct_members)
+__attribute__((objc_direct_members))
+#endif
 @implementation TJImageCacheNoOpDelegate
 
 - (void)didGetImage:(IMAGE_CLASS *)image atURL:(NSString *)url
