@@ -12,6 +12,7 @@
 
 static char *const kTJImageCacheUIImageViewImageURLStringKey = "tj_imageURLString";
 
+__attribute__((objc_direct_members))
 @interface UIImageView (TJImageCachePrivate) <TJImageCacheDelegate>
 
 @end

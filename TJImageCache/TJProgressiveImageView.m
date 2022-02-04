@@ -8,12 +8,14 @@
 
 #import "TJProgressiveImageView.h"
 
+__attribute__((objc_direct_members))
 @interface TJProgressiveImageView () <TJImageCacheDelegate> {
     NSInteger _currentImageURLStringIndex;
 }
 
 @end
 
+__attribute__((objc_direct_members))
 @implementation TJProgressiveImageView
 
 - (instancetype)initWithFrame:(CGRect)frame

@@ -12,6 +12,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+__attribute__((objc_direct_members))
 @interface UIImageView (TJImageCache)
 
 @property (nonatomic, copy, nullable, setter=tj_setImageURLString:) NSString *tj_imageURLString;
