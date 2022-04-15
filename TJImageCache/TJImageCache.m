@@ -600,6 +600,9 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const originalPath, 
                 NSLog(@"~~~ %@", @(CACurrentMediaTime() - s));
             });
             
+            static CFTimeInterval t = 0;
+            static NSUInteger c = 0;
+            CFTimeInterval s = CACurrentMediaTime();
             // Move resulting image into place.
             NSError *error;
             if (![fileManager moveItemAtPath:originalPath toPath:destinationPath error:&error]) {
@@ -612,6 +615,9 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const originalPath, 
             } else {
                 sizeToWrite = size;
             }
+            t += CACurrentMediaTime() - s;
+            c++;
+            NSLog(@"%@ %@", @(t), @(t/c));
             
             path = destinationPath;
         }
