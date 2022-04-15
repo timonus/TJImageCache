@@ -230,7 +230,7 @@ NSString *TJImageCacheHash(NSString *string)
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
             if ([fileManager fileExistsAtPath:path]) {
-                _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
+                _tryUpdateMemoryCacheAndCallDelegates(nil, path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
                 NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
@@ -266,41 +266,12 @@ NSString *TJImageCacheHash(NSString *string)
                             validToProcess = [contentType hasPrefix:@"image/"];
                         }
                         
-                        BOOL success;
                         if (validToProcess) {
-                            // Lazily generate the directory the first time it's written to if needed.
-                            static dispatch_once_t rootDirectoryOnceToken;
-                            dispatch_once(&rootDirectoryOnceToken, ^{
-                                if (![fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:nil]) {
-                                    [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
-                                    
-                                    // Don't back up
-                                    // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-                                    NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
-                                    [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
-                                }
-                            });
-                            
-                            // Move resulting image into place.
-                            NSError *error;
-                            if (![fileManager moveItemAtPath:location.path toPath:path error:&error]) {
-                                // Still consider this a success if the file already exists.
-                                success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
-                                && [error.domain isEqualToString:NSCocoaErrorDomain];
-                                NSAssert(!success, @"Loaded file that already exists! %@ -> %@", urlString, hash);
-                            } else {
-                                success = YES;
-                            }
-                        } else {
-                            success = NO;
-                        }
-                        
-                        if (success) {
                             // Inform delegates about success
-                            _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
+                            _tryUpdateMemoryCacheAndCallDelegates(location.path, path, urlString, hash, forceDecompress, response.expectedContentLength);
                         } else {
                             // Inform delegates about failure
-                            _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                            _tryUpdateMemoryCacheAndCallDelegates(nil, nil, urlString, hash, forceDecompress, 0);
                         }
                         
                         _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
@@ -318,7 +289,7 @@ NSString *TJImageCacheHash(NSString *string)
                 [task resume];
             } else {
                 // Inform delegates about failure
-                _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                _tryUpdateMemoryCacheAndCallDelegates(nil, nil, urlString, hash, forceDecompress, 0);
             }
         });
     }
@@ -598,7 +569,7 @@ static void _tasksForImageURLStringsWithBlock(void (^block)(NSMutableDictionary<
     });
 }
 
-static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
+static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const originalPath, NSString *const destinationPath, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
 {
     __block NSHashTable *delegatesForRequest = nil;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
@@ -608,13 +579,52 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     
     const BOOL canProcess = delegatesForRequest.count > 0;
     
+    __block NSString *path = originalPath ?: destinationPath;
+    
+    __block long long sizeToWrite;
+    dispatch_block_t tryMoveBlock = ^{
+        if (path != destinationPath) {
+            NSFileManager *const fileManager = [NSFileManager defaultManager];
+            // Lazily generate the directory the first time it's written to if needed.
+            static dispatch_once_t rootDirectoryOnceToken;
+            dispatch_once(&rootDirectoryOnceToken, ^{
+                CFTimeInterval s = CACurrentMediaTime();
+                if (![fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:nil]) {
+                    [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+                    
+                    // Don't back up
+                    // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+                    NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+                    [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+                }
+                NSLog(@"~~~ %@", @(CACurrentMediaTime() - s));
+            });
+            
+            // Move resulting image into place.
+            NSError *error;
+            if (![fileManager moveItemAtPath:originalPath toPath:destinationPath error:&error]) {
+                // Still consider this a success if the file already exists.
+                if (error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
+                    && [error.domain isEqualToString:NSCocoaErrorDomain]) {
+                    NSCAssert(NO, @"Loaded file that already exists! %@ -> %@", urlString, hash);
+                }
+                sizeToWrite = 0;
+            } else {
+                sizeToWrite = size;
+            }
+            
+            path = destinationPath;
+        }
+    };
+    
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
             if (forceDecompress) {
-                image = _predrawnImageFromPath(path);
+                image = _predrawnImageFromPath(originalPath ?: destinationPath);
             }
             if (!image) {
+                tryMoveBlock(); // Move it eagerly since loading it without predrawing may memory map
                 image = [IMAGE_CLASS imageWithContentsOfFile:path];
             }
         }
@@ -644,6 +654,8 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         _modifyDeltaSize(size);
     });
+    
+    tryMoveBlock();
     
     // Per this WWDC talk, dump as much memory as possible when entering the background to avoid jetsam.
     // https://developer.apple.com/videos/play/wwdc2020/10078/?t=333
