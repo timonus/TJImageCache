@@ -229,11 +229,11 @@ NSString *TJImageCacheHash(NSString *string)
             NSURL *const url = [NSURL URLWithString:urlString];
             const BOOL isFileURL = url.isFileURL;
             NSString *const path = isFileURL ? url.path : _pathForHash(hash);
+            NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
             if ([fileManager fileExistsAtPath:path]) {
                 _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
 
                 // Update last access date
-                NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
                 [fileURL setResourceValue:[NSDate date] forKey:NSURLContentModificationDateKey error:nil];
             } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                 static NSURLSession *session;
@@ -283,7 +283,7 @@ NSString *TJImageCacheHash(NSString *string)
                             
                             // Move resulting image into place.
                             NSError *error;
-                            if (![fileManager moveItemAtPath:location.path toPath:path error:&error]) {
+                            if (![fileManager moveItemAtURL:location toURL:fileURL error:nil]) {
                                 // Still consider this a success if the file already exists.
                                 success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
                                 && [error.domain isEqualToString:NSCocoaErrorDomain];
