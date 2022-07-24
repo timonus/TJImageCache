@@ -37,7 +37,7 @@ __attribute__((objc_direct_members))
         NSOrderedSet<NSString *> *const priorImageURLStrings = _imageURLStrings;
         NSString *const priorImageURLString = _currentImageURLStringIndex != NSNotFound ? [_imageURLStrings objectAtIndex:_currentImageURLStringIndex] : nil;
         _imageURLStrings = imageURLStrings;
-        _currentImageURLStringIndex = _imageURLStrings == nil ? NSNotFound : [_imageURLStrings indexOfObject:priorImageURLString];
+        _currentImageURLStringIndex = _imageURLStrings == nil || priorImageURLString == nil ? NSNotFound : [_imageURLStrings indexOfObject:priorImageURLString];
         
         if (_currentImageURLStringIndex != 0) {
             [_imageURLStrings enumerateObjectsUsingBlock:^(NSString * _Nonnull urlString, NSUInteger idx, BOOL * _Nonnull stop) {
