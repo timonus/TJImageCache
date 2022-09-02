@@ -247,7 +247,7 @@ NSString *TJImageCacheHash(NSString *string)
                 NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
                 [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
 
-                NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *error) {
+                NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
                     dispatch_async(asyncDispatchQueue, ^{
                         BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
                         if (validToProcess) {
@@ -283,7 +283,7 @@ NSString *TJImageCacheHash(NSString *string)
                             
                             // Move resulting image into place.
                             NSError *error;
-                            if (![fileManager moveItemAtURL:location toURL:fileURL error:nil]) {
+                            if (![fileManager moveItemAtURL:location toURL:fileURL error:&error]) {
                                 // Still consider this a success if the file already exists.
                                 success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
                                 && [error.domain isEqualToString:NSCocoaErrorDomain];
