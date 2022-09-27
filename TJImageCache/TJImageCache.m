@@ -590,6 +590,19 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
 // Modified version of https://github.com/Flipboard/FLAnimatedImage/blob/master/FLAnimatedImageDemo/FLAnimatedImage/FLAnimatedImage.m#L641
 static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
 {
+    // http://www.lukeparham.com/blog/2018/3/14/decoding-jpegs-with-the-best
+    // https://github.com/Alamofire/AlamofireImage/blob/98cbb00ce0ec5fc8e52a5b50a6bfc08d3e5aee10/Source/UIImage%2BAlamofireImage.swift#L113
+    
+    UIImage *image = [UIImage imageWithContentsOfFile:path];
+    CGDataProviderRef  provider = CGImageGetDataProvider(image.CGImage);
+    if (provider) {
+        CFDataRef data = CGDataProviderCopyData(provider);
+        if (data) {
+            CFRelease(data);
+        }
+    }
+    return image;
+    /*
 #if defined(__IPHONE_15_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_15_0
 #if !defined(__IPHONE_15_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_15_0
     if (@available(iOS 15.0, *))
@@ -664,6 +677,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     
     return predrawnImage;
 #endif
+     */
 }
 
 + (void)computeDiskCacheSizeIfNeeded
