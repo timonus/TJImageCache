@@ -4,7 +4,6 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
-#define TJIMAGECACHE_USE_SHA256 1
 #define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 1
 
 static NSString *_tj_imageCacheRootPath;
@@ -60,17 +59,8 @@ __attribute__((objc_direct_members))
 
 NSString *TJImageCacheHash(NSString *string)
 {
-#if TJIMAGECACHE_USE_SHA256
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
-#else
-    unsigned char result[CC_MD5_DIGEST_LENGTH];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    // MD5 deprecated in iOS 13 for security use, but still fine for us.
-    CC_MD5([string UTF8String], (CC_LONG)string.length, result);
-#pragma clang diagnostic pop
-#endif
     
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
     static const char *table = "eilotrmapdnsIcufkMShjTRxgC4013"; // 11 digits accepted
@@ -87,7 +77,7 @@ NSString *TJImageCacheHash(NSString *string)
             table[result[9] % 30],
             table[result[10] % 30]
             ];
-#elif TJIMAGECACHE_USE_SHA256
+#else
     return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
             result[0],
             result[1],
@@ -121,24 +111,6 @@ NSString *TJImageCacheHash(NSString *string)
             result[29],
             result[30],
             result[31]];
-#else
-    return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0],
-            result[1],
-            result[2],
-            result[3],
-            result[4],
-            result[5],
-            result[6],
-            result[7],
-            result[8],
-            result[9],
-            result[10],
-            result[11],
-            result[12],
-            result[13],
-            result[14],
-            result[15]];
 #endif
 }
 
@@ -442,10 +414,8 @@ NSString *TJImageCacheHash(NSString *string)
         static const NSUInteger kExpectedFilenameLength =
 #if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
         11
-#elif TJIMAGECACHE_USE_SHA256
-        64
 #else
-        32
+        64
 #endif
         ;
         for (NSString *file in enumerator) {
