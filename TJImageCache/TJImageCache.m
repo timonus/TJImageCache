@@ -55,24 +55,30 @@ __attribute__((objc_direct_members))
     return TJImageCacheHash(string);
 }
 
+// Using 11 characters from the following table guarantees that we'll generate maximally unique keys that are also tagged pointer strings.
+// Tagged pointers have memory and CPU performance benefits, so this is better than just using a plain ol' hex hash.
+// I've omitted the "." and " " characters from this table to create "pleasant" filenames.
+// For more info see https://mikeash.com/pyblog/friday-qa-2015-07-31-tagged-pointer-strings.html
+static char *const kHashCharacterTable = "eilotrmapdnsIcufkMShjTRxgC4013";
+static const NSUInteger kExpectedHashLength = 11;
+
 NSString *TJImageCacheHash(NSString *string)
 {
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
     
-    static const char *table = "eilotrmapdnsIcufkMShjTRxgC4013"; // 11 digits accepted
     return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
-            table[result[0] % 30],
-            table[result[1] % 30],
-            table[result[2] % 30],
-            table[result[3] % 30],
-            table[result[4] % 30],
-            table[result[5] % 30],
-            table[result[6] % 30],
-            table[result[7] % 30],
-            table[result[8] % 30],
-            table[result[9] % 30],
-            table[result[10] % 30]
+            kHashCharacterTable[result[0] % 30],
+            kHashCharacterTable[result[1] % 30],
+            kHashCharacterTable[result[2] % 30],
+            kHashCharacterTable[result[3] % 30],
+            kHashCharacterTable[result[4] % 30],
+            kHashCharacterTable[result[5] % 30],
+            kHashCharacterTable[result[6] % 30],
+            kHashCharacterTable[result[7] % 30],
+            kHashCharacterTable[result[8] % 30],
+            kHashCharacterTable[result[9] % 30],
+            kHashCharacterTable[result[10] % 30]
             ];
 }
 
@@ -373,13 +379,12 @@ NSString *TJImageCacheHash(NSString *string)
         NSFileManager *const fileManager = [NSFileManager defaultManager];
         NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtPath:_rootPath()];
         long long totalFileSize = 0;
-        static const NSUInteger kExpectedFilenameLength = 11;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *const attributes = enumerator.fileAttributes;
                 long long fileSize = attributes.fileSize;
                 BOOL remove;
-                if (file.length == kExpectedFilenameLength) {
+                if (file.length == kExpectedHashLength) {
                     __block BOOL isInUse = NO;
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                         isInUse = [mapTable objectForKey:file] != nil;
