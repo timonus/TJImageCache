@@ -4,8 +4,6 @@
 #import "TJImageCache.h"
 #import <CommonCrypto/CommonDigest.h>
 
-#define TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH 1
-
 static NSString *_tj_imageCacheRootPath;
 
 static NSNumber *_tj_imageCacheBaseSize;
@@ -62,7 +60,6 @@ NSString *TJImageCacheHash(NSString *string)
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
     
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
     static const char *table = "eilotrmapdnsIcufkMShjTRxgC4013"; // 11 digits accepted
     return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
             table[result[0] % 30],
@@ -77,41 +74,6 @@ NSString *TJImageCacheHash(NSString *string)
             table[result[9] % 30],
             table[result[10] % 30]
             ];
-#else
-    return [NSString stringWithFormat:@"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-            result[0],
-            result[1],
-            result[2],
-            result[3],
-            result[4],
-            result[5],
-            result[6],
-            result[7],
-            result[8],
-            result[9],
-            result[10],
-            result[11],
-            result[12],
-            result[13],
-            result[14],
-            result[15],
-            result[16],
-            result[17],
-            result[18],
-            result[19],
-            result[20],
-            result[21],
-            result[22],
-            result[23],
-            result[24],
-            result[25],
-            result[26],
-            result[27],
-            result[28],
-            result[29],
-            result[30],
-            result[31]];
-#endif
 }
 
 + (NSString *)pathForURLString:(NSString *const)urlString
@@ -411,13 +373,7 @@ NSString *TJImageCacheHash(NSString *string)
         NSFileManager *const fileManager = [NSFileManager defaultManager];
         NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtPath:_rootPath()];
         long long totalFileSize = 0;
-        static const NSUInteger kExpectedFilenameLength =
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-        11
-#else
-        64
-#endif
-        ;
+        static const NSUInteger kExpectedFilenameLength = 11;
         for (NSString *file in enumerator) {
             @autoreleasepool {
                 NSDictionary *const attributes = enumerator.fileAttributes;
@@ -425,14 +381,8 @@ NSString *TJImageCacheHash(NSString *string)
                 BOOL remove;
                 if (file.length == kExpectedFilenameLength) {
                     __block BOOL isInUse = NO;
-                    NSString *const key =
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-                    file;
-#else
-                    [file substringToIndex:9];
-#endif
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                        isInUse = [mapTable objectForKey:key] != nil;
+                        isInUse = [mapTable objectForKey:file] != nil;
                     }, NO);
                     remove = !isInUse && !block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize);
                 } else {
@@ -590,14 +540,8 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         if (image) {
             [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
-            NSString *const key =
-#if TJIMAGECACHE_USE_TAGGED_POINTER_STRING_HASH
-            hash;
-#else
-            [hash substringToIndex:9];
-#endif
             _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
-                [mapTable setObject:image forKey:key];
+                [mapTable setObject:image forKey:hash];
                 [mapTable setObject:image forKey:urlString];
             }, YES);
         }
