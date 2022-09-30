@@ -26,6 +26,27 @@ __attribute__((objc_direct_members))
 
 @end
 
+@interface NSHashTable (TJImageCacheAdditions)
+
+- (BOOL)tj_isEmpty;
+
+@end
+
+#if defined(__has_attribute) && __has_attribute(objc_direct_members)
+__attribute__((objc_direct_members))
+#endif
+@implementation NSHashTable (TJImageCacheAdditions)
+
+- (BOOL)tj_isEmpty
+{
+    // NSHashTable can sometimes misreport "count"
+    // This seems to be a surefire way to check if a hash table is truly empty.
+    // https://stackoverflow.com/a/29882356/3943258
+    return !self.anyObject;
+}
+
+@end
+
 #if defined(__has_attribute) && __has_attribute(objc_direct_members)
 __attribute__((objc_direct_members))
 #endif
@@ -273,7 +294,7 @@ NSString *TJImageCacheHash(NSString *string)
         NSHashTable *const delegates = [requestDelegates objectForKey:urlString];
         if (delegates) {
             [delegates removeObject:delegate];
-            if (delegates.count == 0) {
+            if ([delegates tj_isEmpty]) {
                 cancelTask = YES;
             }
         }
@@ -531,7 +552,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         [requestDelegates removeObjectForKey:urlString];
     });
     
-    const BOOL canProcess = delegatesForRequest.count > 0;
+    const BOOL canProcess = ![delegatesForRequest tj_isEmpty];
     
     IMAGE_CLASS *image = nil;
     if (canProcess) {
