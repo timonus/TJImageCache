@@ -48,8 +48,8 @@ __attribute__((objc_direct_members))
 {
     NSString *const currentImageURLString = self.tj_imageURLString;
     if (imageURLString != currentImageURLString && ![imageURLString isEqualToString:currentImageURLString]) {
-        objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
         self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self forceDecompress:forceDecompress];
+        objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
         if (currentImageURLString) {
             [TJImageCache cancelImageLoadForURL:currentImageURLString delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];
         }
