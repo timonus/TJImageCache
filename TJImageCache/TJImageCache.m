@@ -262,6 +262,9 @@ NSString *TJImageCacheHash(NSString *string)
                         } else {
                             // Inform delegates about failure
                             _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                            if (location) {
+                                [fileManager removeItemAtURL:location error:nil];
+                            }
                         }
                         
                         _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
