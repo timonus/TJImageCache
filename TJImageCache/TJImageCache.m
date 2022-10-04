@@ -153,9 +153,9 @@ NSString *TJImageCacheHash(NSString *string)
     }
     
     // Check if there's an existing disk/network request running for this image.
-    __block BOOL loadAsynchronously = NO;
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
         _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+            BOOL loadAsynchronously = NO;
             NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
             if (!delegatesForRequest) {
                 delegatesForRequest = [NSHashTable weakObjectsHashTable];
@@ -173,118 +173,118 @@ NSString *TJImageCacheHash(NSString *string)
                 });
                 [delegatesForRequest addObject:noOpDelegate];
             }
-        });
-    }
-    
-    // Attempt load from disk and network.
-    if (loadAsynchronously) {
-        static dispatch_queue_t asyncDispatchQueue;
-        static NSFileManager *fileManager;
-        static dispatch_once_t readOnceToken;
-        dispatch_once(&readOnceToken, ^{
-            asyncDispatchQueue = dispatch_queue_create("TJImageCache disk read queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
-            fileManager = [NSFileManager defaultManager];
-        });
-        dispatch_async(asyncDispatchQueue, ^{
-            NSString *const hash = TJImageCacheHash(urlString);
-            NSURL *const url = [NSURL URLWithString:urlString];
-            const BOOL isFileURL = url.isFileURL;
-            NSString *const path = isFileURL ? url.path : _pathForHash(hash);
-            NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
-            if ([fileManager fileExistsAtPath:path]) {
-                _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
-
-                // Update last access date
-                [fileURL setResourceValue:[NSDate date] forKey:NSURLContentModificationDateKey error:nil];
-            } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
-                static NSURLSession *session;
-                static dispatch_once_t sessionOnceToken;
-                dispatch_once(&sessionOnceToken, ^{
-                    // We use an ephemeral session since TJImageCache does memory and disk caching.
-                    // Using NSURLCache would be redundant.
-                    session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+            
+            // Attempt load from disk and network.
+            if (loadAsynchronously) {
+                static dispatch_queue_t asyncDispatchQueue;
+                static NSFileManager *fileManager;
+                static dispatch_once_t readOnceToken;
+                dispatch_once(&readOnceToken, ^{
+                    asyncDispatchQueue = dispatch_queue_create("TJImageCache async load queue", DISPATCH_QUEUE_CONCURRENT_WITH_AUTORELEASE_POOL);
+                    fileManager = [NSFileManager defaultManager];
                 });
-                
-                NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
-                [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
-
-                NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
-                    dispatch_async(asyncDispatchQueue, ^{
-                        BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
-                        if (validToProcess) {
-                            NSString *contentType;
-                            static NSString *const kContentTypeResponseHeaderKey = @"Content-Type";
-#if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
-                            if (@available(iOS 13.0, *)) {
-#endif
-                                // -valueForHTTPHeaderField: is more "correct" since it's case-insensitive, however it's only available in iOS 13+.
-                                contentType = [(NSHTTPURLResponse *)response valueForHTTPHeaderField:kContentTypeResponseHeaderKey];
-#if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
-                            } else {
-                                contentType = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:kContentTypeResponseHeaderKey];
-                            }
-#endif
-                            validToProcess = [contentType hasPrefix:@"image/"];
-                        }
+                dispatch_async(asyncDispatchQueue, ^{
+                    NSString *const hash = TJImageCacheHash(urlString);
+                    NSURL *const url = [NSURL URLWithString:urlString];
+                    const BOOL isFileURL = url.isFileURL;
+                    NSString *const path = isFileURL ? url.path : _pathForHash(hash);
+                    NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
+                    if ([fileManager fileExistsAtPath:path]) {
+                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
                         
-                        BOOL success;
-                        if (validToProcess) {
-                            // Lazily generate the directory the first time it's written to if needed.
-                            static dispatch_once_t rootDirectoryOnceToken;
-                            dispatch_once(&rootDirectoryOnceToken, ^{
-                                if (![fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:nil]) {
-                                    [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
-                                    
-                                    // Don't back up
-                                    // https://developer.apple.com/library/ios/qa/qa1719/_index.html
-                                    NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
-                                    [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+                        // Update last access date
+                        [fileURL setResourceValue:[NSDate date] forKey:NSURLContentModificationDateKey error:nil];
+                    } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
+                        static NSURLSession *session;
+                        static dispatch_once_t sessionOnceToken;
+                        dispatch_once(&sessionOnceToken, ^{
+                            // We use an ephemeral session since TJImageCache does memory and disk caching.
+                            // Using NSURLCache would be redundant.
+                            session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+                        });
+                        
+                        NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
+                        [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
+                        
+                        NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
+                            dispatch_async(asyncDispatchQueue, ^{
+                                BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
+                                if (validToProcess) {
+                                    NSString *contentType;
+                                    static NSString *const kContentTypeResponseHeaderKey = @"Content-Type";
+#if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
+                                    if (@available(iOS 13.0, *)) {
+#endif
+                                        // -valueForHTTPHeaderField: is more "correct" since it's case-insensitive, however it's only available in iOS 13+.
+                                        contentType = [(NSHTTPURLResponse *)response valueForHTTPHeaderField:kContentTypeResponseHeaderKey];
+#if !defined(__IPHONE_13_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_13_0
+                                    } else {
+                                        contentType = [[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:kContentTypeResponseHeaderKey];
+                                    }
+#endif
+                                    validToProcess = [contentType hasPrefix:@"image/"];
                                 }
+                                
+                                BOOL success;
+                                if (validToProcess) {
+                                    // Lazily generate the directory the first time it's written to if needed.
+                                    static dispatch_once_t rootDirectoryOnceToken;
+                                    dispatch_once(&rootDirectoryOnceToken, ^{
+                                        if (![fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:nil]) {
+                                            [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
+                                            
+                                            // Don't back up
+                                            // https://developer.apple.com/library/ios/qa/qa1719/_index.html
+                                            NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
+                                            [rootURL setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:nil];
+                                        }
+                                    });
+                                    
+                                    // Move resulting image into place.
+                                    NSError *error;
+                                    if ([fileManager moveItemAtURL:location toURL:fileURL error:&error]) {
+                                        success = YES;
+                                    } else {
+                                        // Still consider this a success if the file already exists.
+                                        success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
+                                        && [error.domain isEqualToString:NSCocoaErrorDomain];
+                                        NSAssert(!success, @"Loaded file that already exists! %@ -> %@", urlString, hash);
+                                    }
+                                } else {
+                                    success = NO;
+                                }
+                                
+                                if (success) {
+                                    // Inform delegates about success
+                                    _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
+                                } else {
+                                    // Inform delegates about failure
+                                    _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                                    if (location) {
+                                        [fileManager removeItemAtURL:location error:nil];
+                                    }
+                                }
+                                
+                                _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
+                                    [tasks removeObjectForKey:urlString];
+                                });
                             });
-                            
-                            // Move resulting image into place.
-                            NSError *error;
-                            if ([fileManager moveItemAtURL:location toURL:fileURL error:&error]) {
-                                success = YES;
-                            } else {
-                                // Still consider this a success if the file already exists.
-                                success = error.code == NSFileWriteFileExistsError // https://apple.co/3vO2s0X
-                                && [error.domain isEqualToString:NSCocoaErrorDomain];
-                                NSAssert(!success, @"Loaded file that already exists! %@ -> %@", urlString, hash);
-                            }
-                        } else {
-                            success = NO;
-                        }
+                        }];
                         
-                        if (success) {
-                            // Inform delegates about success
-                            _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
-                        } else {
-                            // Inform delegates about failure
-                            _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
-                            if (location) {
-                                [fileManager removeItemAtURL:location error:nil];
-                            }
-                        }
+                        task.countOfBytesClientExpectsToSend = 0;
                         
                         _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
-                            [tasks removeObjectForKey:urlString];
+                            [tasks setObject:task forKey:urlString];
                         });
-                    });
-                }];
-                
-                task.countOfBytesClientExpectsToSend = 0;
-                
-                _tasksForImageURLStringsWithBlock(^(NSMutableDictionary<NSString *,NSURLSessionDownloadTask *> *const tasks) {
-                    [tasks setObject:task forKey:urlString];
+                        
+                        [task resume];
+                    } else {
+                        // Inform delegates about failure
+                        _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                    }
                 });
-                
-                [task resume];
-            } else {
-                // Inform delegates about failure
-                _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
             }
-        });
+        }, NO);
     }
     
     return inMemoryImage;
@@ -326,7 +326,7 @@ NSString *TJImageCacheHash(NSString *string)
                 }
             });
         }
-    });
+    }, NO);
 }
 
 #pragma mark - Cache Checking
@@ -514,7 +514,7 @@ static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS 
 }
 
 /// Keys are image URL strings
-static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
+static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates), const BOOL sync)
 {
     static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests;
     static dispatch_once_t token;
@@ -525,9 +525,15 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
         queue = dispatch_queue_create("TJImageCache._requestDelegatesWithBlock", DISPATCH_QUEUE_SERIAL);
     });
     
-    dispatch_sync(queue, ^{
-        block(requests);
-    });
+    if (sync) {
+        dispatch_sync(queue, ^{
+            block(requests);
+        });
+    } else {
+        dispatch_async(queue, ^{
+            block(requests);
+        });
+    }
 }
 
 /// Keys are image URL strings
@@ -553,7 +559,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
-    });
+    }, YES);
     
     const BOOL canProcess = ![delegatesForRequest tj_isEmpty];
     
