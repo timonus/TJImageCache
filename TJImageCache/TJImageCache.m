@@ -200,7 +200,10 @@ NSString *TJImageCacheHash(NSString *string)
                         dispatch_once(&sessionOnceToken, ^{
                             // We use an ephemeral session since TJImageCache does memory and disk caching.
                             // Using NSURLCache would be redundant.
-                            session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+                            NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+                            config.waitsForConnectivity = YES;
+                            config.timeoutIntervalForResource = 60;
+                            session = [NSURLSession sessionWithConfiguration:config];
                         });
                         
                         NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
