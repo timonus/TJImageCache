@@ -359,10 +359,11 @@ NSString *TJImageCacheHash(NSString *string)
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
         long long fileSize = 0;
-        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtPath:_rootPath()];
-        for (NSString *filename in enumerator) {
-#pragma unused(filename)
-            fileSize += enumerator.fileAttributes.fileSize;
+        NSDirectoryEnumerator *const enumerator = [[NSFileManager defaultManager] enumeratorAtURL:[NSURL fileURLWithPath:_rootPath() isDirectory:YES] includingPropertiesForKeys:@[NSURLTotalFileAllocatedSizeKey] options:0 errorHandler:nil];
+        for (NSURL *url in enumerator) {
+            NSNumber *fileSizeNumber;
+            [url getResourceValue:&fileSizeNumber forKey:NSURLTotalFileAllocatedSizeKey error:nil];
+            fileSize += fileSizeNumber.unsignedLongLongValue;
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(fileSize);
@@ -402,19 +403,25 @@ NSString *TJImageCacheHash(NSString *string)
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSFileManager *const fileManager = [NSFileManager defaultManager];
-        NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtPath:_rootPath()];
+        NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtURL:[NSURL fileURLWithPath:_rootPath() isDirectory:NO] includingPropertiesForKeys:@[NSURLTotalFileAllocatedSizeKey, NSURLCreationDateKey, NSURLContentModificationDateKey] options:0 errorHandler:nil];
         long long totalFileSize = 0;
-        for (NSString *file in enumerator) {
+        for (NSURL *url in enumerator) {
             @autoreleasepool {
-                NSDictionary *const attributes = enumerator.fileAttributes;
-                long long fileSize = attributes.fileSize;
+                NSNumber *fileSizeNumber;
+                [url getResourceValue:&fileSizeNumber forKey:NSURLTotalFileAllocatedSizeKey error:nil];
+                const unsigned long long fileSize = fileSizeNumber.unsignedLongValue;
                 BOOL remove;
+                NSString *const file = url.lastPathComponent;
                 if (file.length == kExpectedHashLength) {
                     __block BOOL isInUse = NO;
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                         isInUse = [mapTable objectForKey:file] != nil;
                     }, NO);
-                    remove = !isInUse && !block(file, attributes.fileModificationDate, attributes.fileCreationDate, fileSize);
+                    NSDate *modificationDate;
+                    NSDate *creationDate;
+                    [url getResourceValue:&modificationDate forKey:NSURLContentModificationDateKey error:nil];
+                    [url getResourceValue:&creationDate forKey:NSURLCreationDateKey error:nil];
+                    remove = !isInUse && !block(file, modificationDate, creationDate, fileSize);
                 } else {
                     remove = YES;
                 }
