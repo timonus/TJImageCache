@@ -233,9 +233,7 @@ NSString *TJImageCacheHash(NSString *string)
                                     // Lazily generate the directory the first time it's written to if needed.
                                     static dispatch_once_t rootDirectoryOnceToken;
                                     dispatch_once(&rootDirectoryOnceToken, ^{
-                                        if (![fileManager fileExistsAtPath:_tj_imageCacheRootPath isDirectory:nil]) {
-                                            [fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil];
-                                            
+                                        if ([fileManager createDirectoryAtPath:_tj_imageCacheRootPath withIntermediateDirectories:YES attributes:nil error:nil]) {
                                             // Don't back up
                                             // https://developer.apple.com/library/ios/qa/qa1719/_index.html
                                             NSURL *const rootURL = _tj_imageCacheRootPath != nil ? [NSURL fileURLWithPath:_tj_imageCacheRootPath isDirectory:YES] : nil;
