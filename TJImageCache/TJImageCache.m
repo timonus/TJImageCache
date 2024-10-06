@@ -193,7 +193,7 @@ NSString *TJImageCacheHash(NSString *string)
                         _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
                         
                         // Update last access date
-                        [fileURL setResourceValue:[NSDate date] forKey:NSURLContentModificationDateKey error:nil];
+                        [fileURL setResourceValue:[NSDate date] forKey:NSURLContentAccessDateKey error:nil];
                     } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
                         static NSURLSession *session;
                         static dispatch_once_t sessionOnceToken;
@@ -392,18 +392,26 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)dumpDiskCache
 {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSURL *fileURL, long long fileSize) {
         return NO;
-    } completionBlock:nil];
+    }
+                 propertyKeys:nil
+              completionBlock:nil];
 }
 
 #pragma mark - Cache Auditing
 
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(dispatch_block_t)completionBlock
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSURL *fileURL, long long fileSize))block
+               propertyKeys:(NSArray<NSURLResourceKey> *const)inPropertyKeys
+            completionBlock:(const dispatch_block_t)completionBlock
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
         NSFileManager *const fileManager = [NSFileManager defaultManager];
-        NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtURL:[NSURL fileURLWithPath:_rootPath() isDirectory:NO] includingPropertiesForKeys:@[NSURLTotalFileAllocatedSizeKey, NSURLCreationDateKey, NSURLContentModificationDateKey] options:0 errorHandler:nil];
+        NSArray *const propertyKeys = inPropertyKeys ? [inPropertyKeys arrayByAddingObject:NSURLTotalFileAllocatedSizeKey] : @[NSURLTotalFileAllocatedSizeKey];
+        NSDirectoryEnumerator *const enumerator = [fileManager enumeratorAtURL:[NSURL fileURLWithPath:_rootPath() isDirectory:NO]
+                                                    includingPropertiesForKeys:propertyKeys
+                                                                       options:0
+                                                                  errorHandler:nil];
         long long totalFileSize = 0;
         for (NSURL *url in enumerator) {
             @autoreleasepool {
@@ -421,7 +429,7 @@ NSString *TJImageCacheHash(NSString *string)
                     NSDate *creationDate;
                     [url getResourceValue:&modificationDate forKey:NSURLContentModificationDateKey error:nil];
                     [url getResourceValue:&creationDate forKey:NSURLCreationDateKey error:nil];
-                    remove = !isInUse && !block(file, modificationDate, creationDate, fileSize);
+                    remove = !isInUse && !block(file, url, fileSize);
                 } else {
                     remove = YES;
                 }
@@ -447,9 +455,13 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
 {
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
+    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSURL *fileURL, long long fileSize) {
+        NSDate *lastAccess;
+        [fileURL getResourceValue:&lastAccess forKey:NSURLContentAccessDateKey error:nil];
         return ([lastAccess compare:date] != NSOrderedAscending);
-    } completionBlock:nil];
+    }
+                 propertyKeys:@[NSURLContentAccessDateKey]
+              completionBlock:nil];
 }
 
 #pragma mark - Private

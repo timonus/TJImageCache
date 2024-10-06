@@ -55,7 +55,9 @@ extern NSString *TJImageCacheHash(NSString *string);
 + (void)dumpMemoryCache;
 + (void)getDiskCacheSize:(void (^const)(long long diskCacheSize))completion;
 
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block completionBlock:(nullable dispatch_block_t)completionBlock; // return YES to preserve the image, return NO to delete it
++ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSURL *fileURL, long long fileSize))block // return YES to preserve the image, return NO to delete it
+               propertyKeys:(nullable NSArray<NSURLResourceKey> *)propertyKeys
+            completionBlock:(nullable dispatch_block_t)completionBlock;
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date;
 
 + (void)computeDiskCacheSizeIfNeeded;
