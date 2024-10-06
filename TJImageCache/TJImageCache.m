@@ -394,7 +394,7 @@ NSString *TJImageCacheHash(NSString *string)
 {
     [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
         return NO;
-    }];
+    } completionBlock:nil];
 }
 
 #pragma mark - Cache Auditing
@@ -445,23 +445,11 @@ NSString *TJImageCacheHash(NSString *string)
     });
 }
 
-+ (void)auditCacheWithBlock:(BOOL (^const)(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize))block
-{
-    [self auditCacheWithBlock:block completionBlock:nil];
-}
-
-+ (void)auditCacheRemovingFilesOlderThanDate:(NSDate *const)date
-{
-    [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
-        return ([createdDate compare:date] != NSOrderedAscending);
-    }];
-}
-
 + (void)auditCacheRemovingFilesLastAccessedBeforeDate:(NSDate *const)date
 {
     [self auditCacheWithBlock:^BOOL(NSString *hashedURL, NSDate *lastAccess, NSDate *createdDate, long long fileSize) {
         return ([lastAccess compare:date] != NSOrderedAscending);
-    }];
+    } completionBlock:nil];
 }
 
 #pragma mark - Private
