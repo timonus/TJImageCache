@@ -425,10 +425,6 @@ NSString *TJImageCacheHash(NSString *string)
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                         isInUse = [mapTable objectForKey:file] != nil;
                     }, NO);
-                    NSDate *modificationDate;
-                    NSDate *creationDate;
-                    [url getResourceValue:&modificationDate forKey:NSURLContentModificationDateKey error:nil];
-                    [url getResourceValue:&creationDate forKey:NSURLCreationDateKey error:nil];
                     remove = !isInUse && !block(file, url, fileSize);
                 } else {
                     remove = YES;
