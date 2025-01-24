@@ -47,7 +47,7 @@ __attribute__((objc_direct_members))
                 } else {
                     // Load image 0 from network, all others loaded at secondaryImageDepth.
                     const TJImageCacheDepth depth = idx == 0 ? TJImageCacheDepthNetwork : secondaryImageDepth;
-                    UIImage *const image = [TJImageCache imageAtURL:urlString depth:depth delegate:self forceDecompress:YES];
+                    UIImage *const image = [TJImageCache imageAtURL:urlString depth:depth delegate:self backgroundDecode:YES];
                     if (image) {
                         _currentImageURLStringIndex = idx;
                         self.image = image;

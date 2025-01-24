@@ -8,7 +8,7 @@ You must configure the cache using either `+configureWithDefaultRootPath` or `+c
 
 To fetch an image, use one of the following methods.
 
-1. `+imageAtURL:depth:delegate:forceDecompress:`
+1. `+imageAtURL:depth:delegate:backgroundDecode:`
 2. `+imageAtURL:depth:delegate:`
 3. `+imageAtURL:delegate:`
 4. `+imageAtURL:depth:`

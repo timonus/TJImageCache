@@ -36,19 +36,19 @@ __attribute__((objc_direct_members))
 
 - (void)tj_setImageURLString:(NSString *)imageURLString
 {
-    [self tj_setImageURLString:imageURLString depth:TJImageCacheDepthNetwork forceDecompress:YES];
+    [self tj_setImageURLString:imageURLString depth:TJImageCacheDepthNetwork backgroundDecode:YES];
 }
 
-- (void)tj_setImageURLString:(NSString *const)imageURLString forceDecompress:(const BOOL)forceDecompress
+- (void)tj_setImageURLString:(NSString *const)imageURLString backgroundDecode:(const BOOL)backgroundDecode
 {
-    [self tj_setImageURLString:imageURLString depth:TJImageCacheDepthNetwork forceDecompress:forceDecompress];
+    [self tj_setImageURLString:imageURLString depth:TJImageCacheDepthNetwork backgroundDecode:backgroundDecode];
 }
 
-- (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth forceDecompress:(const BOOL)forceDecompress
+- (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth backgroundDecode:(const BOOL)backgroundDecode
 {
     NSString *const currentImageURLString = self.tj_imageURLString;
     if (imageURLString != currentImageURLString && ![imageURLString isEqualToString:currentImageURLString]) {
-        self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self forceDecompress:forceDecompress];
+        self.image = [TJImageCache imageAtURL:imageURLString depth:TJImageCacheDepthNetwork delegate:self backgroundDecode:backgroundDecode];
         objc_setAssociatedObject(self, kTJImageCacheUIImageViewImageURLStringKey, imageURLString, OBJC_ASSOCIATION_COPY_NONATOMIC);
         if (currentImageURLString) {
             [TJImageCache cancelImageLoadForURL:currentImageURLString delegate:self policy:TJImageCacheCancellationPolicyImageProcessing];

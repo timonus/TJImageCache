@@ -17,8 +17,8 @@ __attribute__((objc_direct_members))
 
 @property (nonatomic, copy, nullable, setter=tj_setImageURLString:) NSString *tj_imageURLString;
 
-- (void)tj_setImageURLString:(nullable NSString *const)imageURLString forceDecompress:(const BOOL)forceDecompress;
-- (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth forceDecompress:(const BOOL)forceDecompress;
+- (void)tj_setImageURLString:(nullable NSString *const)imageURLString backgroundDecode:(const BOOL)backgroundDecode;
+- (void)tj_setImageURLString:(nullable NSString *const)imageURLString depth:(const TJImageCacheDepth)depth backgroundDecode:(const BOOL)backgroundDecode;
 
 - (void)tj_cancelImageLoadWithPolicy:(const TJImageCacheCancellationPolicy)policy;
 

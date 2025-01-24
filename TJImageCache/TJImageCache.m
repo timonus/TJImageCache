@@ -112,25 +112,25 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil forceDecompress:YES];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:nil backgroundDecode:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth
 {
-    return [self imageAtURL:urlString depth:depth delegate:nil forceDecompress:YES];
+    return [self imageAtURL:urlString depth:depth delegate:nil backgroundDecode:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate forceDecompress:YES];
+    return [self imageAtURL:urlString depth:TJImageCacheDepthNetwork delegate:delegate backgroundDecode:YES];
 }
 
 + (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate
 {
-    return [self imageAtURL:urlString depth:depth delegate:delegate forceDecompress:YES];
+    return [self imageAtURL:urlString depth:depth delegate:delegate backgroundDecode:YES];
 }
 
-+ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate forceDecompress:(const BOOL)forceDecompress
++ (IMAGE_CLASS *)imageAtURL:(NSString *const)urlString depth:(const TJImageCacheDepth)depth delegate:(nullable const id<TJImageCacheDelegate>)delegate backgroundDecode:(const BOOL)backgroundDecode
 {
     if (urlString.length == 0) {
         return nil;
@@ -190,7 +190,7 @@ NSString *TJImageCacheHash(NSString *string)
                     NSString *const path = isFileURL ? url.path : _pathForHash(hash);
                     NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
                     if ([fileManager fileExistsAtPath:path]) {
-                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, 0);
+                        _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, backgroundDecode, 0);
                         
                         // Update last access date
                         [fileURL setResourceValue:[NSDate date] forKey:NSURLContentAccessDateKey error:nil];
@@ -257,10 +257,10 @@ NSString *TJImageCacheHash(NSString *string)
                                 
                                 if (success) {
                                     // Inform delegates about success
-                                    _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, forceDecompress, response.expectedContentLength);
+                                    _tryUpdateMemoryCacheAndCallDelegates(path, urlString, hash, backgroundDecode, response.expectedContentLength);
                                 } else {
                                     // Inform delegates about failure
-                                    _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                                    _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, backgroundDecode, 0);
                                     if (location) {
                                         [fileManager removeItemAtURL:location error:nil];
                                     }
@@ -281,7 +281,7 @@ NSString *TJImageCacheHash(NSString *string)
                         [task resume];
                     } else {
                         // Inform delegates about failure
-                        _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, forceDecompress, 0);
+                        _tryUpdateMemoryCacheAndCallDelegates(nil, urlString, hash, backgroundDecode, 0);
                     }
                 });
             }
@@ -556,7 +556,7 @@ static void _tasksForImageURLStringsWithBlock(void (^block)(NSMutableDictionary<
     });
 }
 
-static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL forceDecompress, const long long size)
+static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL backgroundDecode, const long long size)
 {
     __block NSHashTable *delegatesForRequest = nil;
     _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
@@ -569,7 +569,7 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
-            if (forceDecompress) {
+            if (backgroundDecode) {
                 image = _predrawnImageFromPath(path);
             }
             if (!image) {
