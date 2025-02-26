@@ -203,13 +203,11 @@ NSString *TJImageCacheHash(NSString *string)
                             NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
                             config.waitsForConnectivity = YES;
                             config.timeoutIntervalForResource = 60;
+                            config.HTTPAdditionalHeaders = @{@"Accept": @"image/*"};
                             session = [NSURLSession sessionWithConfiguration:config];
                         });
                         
-                        NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
-                        [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
-                        
-                        NSURLSessionDownloadTask *const task = [session downloadTaskWithRequest:request completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
+                        NSURLSessionDownloadTask *const task = [session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
                             dispatch_async(asyncDispatchQueue, ^{
                                 BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
                                 if (validToProcess) {
