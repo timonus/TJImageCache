@@ -10,7 +10,7 @@ static NSNumber *_tj_imageCacheBaseSize;
 static long long _tj_imageCacheDeltaSize;
 static NSNumber *_tj_imageCacheApproximateCacheSize;
 
-@interface TJImageCacheNoOpDelegate : NSObject <TJImageCacheDelegate>
+static @interface TJImageCacheNoOpDelegate : NSObject <TJImageCacheDelegate>
 
 @end
 
