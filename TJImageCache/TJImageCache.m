@@ -88,6 +88,7 @@ NSString *TJImageCacheHash(NSString *string)
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
     
+    // Could use sample rejection to reduce bias https://tijo.link/ZU4a6W
     return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
             kHashCharacterTable[result[0] % 30],
             kHashCharacterTable[result[1] % 30],
