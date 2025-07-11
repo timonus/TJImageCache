@@ -2,6 +2,7 @@
 // By Tim Johnsen
 
 #import "TJImageCache.h"
+#import "NSURLSession+Opener.h"
 #import <CommonCrypto/CommonDigest.h>
 
 static NSString *_tj_imageCacheRootPath;
@@ -186,19 +187,10 @@ NSString *TJImageCacheHash(NSString *string)
                         // Update last access date
                         [fileURL setResourceValue:[NSDate date] forKey:NSURLContentAccessDateKey error:nil];
                     } else if (depth == TJImageCacheDepthNetwork && !isFileURL && path) {
-                        static NSURLSession *session;
-                        static dispatch_once_t sessionOnceToken;
-                        dispatch_once(&sessionOnceToken, ^{
-                            // We use an ephemeral session since TJImageCache does memory and disk caching.
-                            // Using NSURLCache would be redundant.
-                            NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
-                            config.waitsForConnectivity = YES;
-                            config.timeoutIntervalForResource = 60;
-                            config.HTTPAdditionalHeaders = @{@"Accept": @"image/*"};
-                            session = [NSURLSession sessionWithConfiguration:config];
-                        });
+                        NSMutableURLRequest *const request = [NSMutableURLRequest requestWithURL:url];
+                        [request setValue:@"image/*" forHTTPHeaderField:@"Accept"];
                         
-                        NSURLSessionDownloadTask *const task = [session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
+                        NSURLSessionDownloadTask *const task = [OPENSharedEphemeralURLSession() downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
                             dispatch_async(asyncDispatchQueue, ^{
                                 BOOL validToProcess = location != nil && [response isKindOfClass:[NSHTTPURLResponse class]];
                                 if (validToProcess) {
