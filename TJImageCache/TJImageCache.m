@@ -507,11 +507,23 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
+            IMAGE_CLASS *const diskImage = [IMAGE_CLASS imageWithContentsOfFile:path];
             if (backgroundDecode) {
-                image = _predrawnImageFromPath(path);
+                image = [diskImage imageByPreparingForDisplay] ?: diskImage;
+            } else {
+                image = diskImage;
             }
-            if (!image) {
-                image = [IMAGE_CLASS imageWithContentsOfFile:path];
+            if (@available(iOS 17.0, *)) {
+                if (size > 0 && image && ![[NSProcessInfo processInfo] isLowPowerModeEnabled] && [[NSProcessInfo processInfo] thermalState] == NSProcessInfoThermalStateNominal) {
+                    __block IMAGE_CLASS *strongImage = image;
+                    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                        NSData *const heicData = UIImageHEICRepresentation(diskImage);
+                        if (heicData.length < size) {
+                            [heicData writeToFile:path atomically:YES];
+                        }
+                        strongImage = nil; // Hold reference until we're done
+                    });
+                }
             }
         }
         if (image) {
