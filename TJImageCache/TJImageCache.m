@@ -4,6 +4,7 @@
 #import "TJImageCache.h"
 #import "NSURLSession+Opener.h"
 #import <CommonCrypto/CommonDigest.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 static NSString *_tj_imageCacheRootPath;
 
@@ -506,10 +507,36 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
                 if (size > 0 && image && ![[NSProcessInfo processInfo] isLowPowerModeEnabled] && [[NSProcessInfo processInfo] thermalState] == NSProcessInfoThermalStateNominal) {
                     __block IMAGE_CLASS *strongImage = image;
                     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                        NSURL *fileURL = [NSURL fileURLWithPath:path];
+                        CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
+                        
+                        if (!imageSource) {
+                            return;
+                        }
+                        
+                        const size_t count = CGImageSourceGetCount(imageSource);
+                        
+                        if (count > 1) {
+                            CFRelease(imageSource);
+                            return; // Preserve animated images
+                        }
+                        
+                        NSString *imageType = (__bridge NSString *)CGImageSourceGetType(imageSource);
+                        UTType *utType = [UTType typeWithIdentifier:imageType];
+                        CFRelease(imageSource);
+                        
+                        if ([utType conformsToType:UTTypeWebP] ||
+                            [utType conformsToType:UTTypeHEIC] ||
+                            [utType conformsToType:UTTypeHEIF]) {
+                            // Don't attempt to re-encode already small images
+                            return;
+                        }
+                          
                         NSData *const heicData = UIImageHEICRepresentation(diskImage);
                         if (heicData.length < size) {
                             [heicData writeToFile:path atomically:YES];
                         }
+                        
                         strongImage = nil; // Hold reference until we're done
                     });
                 }
