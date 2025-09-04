@@ -505,8 +505,14 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
             }
             if (@available(iOS 17.0, *)) {
                 if (size > 0 && image && ![[NSProcessInfo processInfo] isLowPowerModeEnabled] && [[NSProcessInfo processInfo] thermalState] == NSProcessInfoThermalStateNominal) {
+                    static dispatch_queue_t reencodeQueue;
+                    static dispatch_once_t onceToken;
+                    dispatch_once(&onceToken, ^{
+                        reencodeQueue = dispatch_queue_create_with_target("com.tijo.TJImageCache.reencodeQueue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0));
+                    });
+                    
                     __block IMAGE_CLASS *strongImage = image;
-                    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                    dispatch_async(reencodeQueue, ^{
                         NSURL *fileURL = [NSURL fileURLWithPath:path];
                         CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
                         
