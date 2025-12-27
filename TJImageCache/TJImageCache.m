@@ -86,7 +86,8 @@ static const NSUInteger kExpectedHashLength = 11;
 NSString *TJImageCacheHash(NSString *string)
 {
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
-    CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
+    const char *utf8 = [string UTF8String];
+    CC_SHA256(utf8, (CC_LONG)strlen(utf8), result);
     
     // Using sample rejection to reduce bias https://tijo.link/ZU4a6W
     return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
