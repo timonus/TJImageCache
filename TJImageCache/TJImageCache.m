@@ -79,7 +79,7 @@ __attribute__((objc_direct_members))
 // Using 11 characters from the following table guarantees that we'll generate maximally unique keys that are also tagged pointer strings.
 // Tagged pointers have memory and CPU performance benefits, so this is better than just using a plain ol' hex hash.
 // I've omitted the "." and " " characters from this table to create "pleasant" filenames.
-// For more info see https://mikeash.com/pyblog/friday-qa-2015-07-31-tagged-pointer-strings.html
+// For more info see https://mikeash.com/pyblog/friday-qa-2015-07-31-tagged-pointer-strings.html and https://objectionable-c.com/posts/tagged-pointer-string-keys/
 static char *const kHashCharacterTable = "eilotrmapdnsIcufkMShjTRxgC4013";
 static const NSUInteger kExpectedHashLength = 11;
 
