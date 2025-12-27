@@ -88,19 +88,19 @@ NSString *TJImageCacheHash(NSString *string)
     unsigned char result[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256([string UTF8String], (CC_LONG)string.length, result);
     
-    // Could use sample rejection to reduce bias https://tijo.link/ZU4a6W
+    // Using sample rejection to reduce bias https://tijo.link/ZU4a6W
     return [NSString stringWithFormat:@"%c%c%c%c%c%c%c%c%c%c%c",
-            kHashCharacterTable[result[0] % 30],
-            kHashCharacterTable[result[1] % 30],
-            kHashCharacterTable[result[2] % 30],
-            kHashCharacterTable[result[3] % 30],
-            kHashCharacterTable[result[4] % 30],
-            kHashCharacterTable[result[5] % 30],
-            kHashCharacterTable[result[6] % 30],
-            kHashCharacterTable[result[7] % 30],
-            kHashCharacterTable[result[8] % 30],
-            kHashCharacterTable[result[9] % 30],
-            kHashCharacterTable[result[10] % 30]
+            kHashCharacterTable[(result[ 0] > 239 ? (result[11] > 239 ? result[22] : result[11]) : result[ 0]) % 30],
+            kHashCharacterTable[(result[ 1] > 239 ? (result[12] > 239 ? result[23] : result[12]) : result[ 1]) % 30],
+            kHashCharacterTable[(result[ 2] > 239 ? (result[13] > 239 ? result[24] : result[13]) : result[ 2]) % 30],
+            kHashCharacterTable[(result[ 3] > 239 ? (result[14] > 239 ? result[25] : result[14]) : result[ 3]) % 30],
+            kHashCharacterTable[(result[ 4] > 239 ? (result[15] > 239 ? result[26] : result[15]) : result[ 4]) % 30],
+            kHashCharacterTable[(result[ 5] > 239 ? (result[16] > 239 ? result[27] : result[16]) : result[ 5]) % 30],
+            kHashCharacterTable[(result[ 6] > 239 ? (result[17] > 239 ? result[28] : result[17]) : result[ 6]) % 30],
+            kHashCharacterTable[(result[ 7] > 239 ? (result[18] > 239 ? result[29] : result[18]) : result[ 7]) % 30],
+            kHashCharacterTable[(result[ 8] > 239 ? (result[19] > 239 ? result[30] : result[19]) : result[ 8]) % 30],
+            kHashCharacterTable[(result[ 9] > 239 ? (result[20] > 239 ? result[31] : result[20]) : result[ 9]) % 30],
+            kHashCharacterTable[(result[10] > 239 ? (result[21]                                ) : result[10]) % 30] // SHA256 length = 32 bytes, so unable to check byte 33 for this last character for sample rejection
             ];
 }
 
