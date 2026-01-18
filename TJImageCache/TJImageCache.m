@@ -206,7 +206,9 @@ NSString *TJImageCacheHash(NSString *string)
                             config.waitsForConnectivity = YES;
                             config.timeoutIntervalForResource = 60;
                             config.HTTPAdditionalHeaders = @{@"Accept": @"image/*"};
+                            config.HTTPMaximumConnectionsPerHost = 10; // A bit more than the default of 6
                             session = [NSURLSession sessionWithConfiguration:config];
+                            session.sessionDescription = @"TJImageCache";
                         });
                         
                         NSURLSessionDownloadTask *const task = [session downloadTaskWithURL:url completionHandler:^(NSURL *location, NSURLResponse *response, NSError *networkError) {
