@@ -188,6 +188,18 @@ NSString *TJImageCacheHash(NSString *string)
                 dispatch_async(asyncDispatchQueue, ^{
                     NSString *const hash = TJImageCacheHash(urlString);
                     NSURL *const url = [NSURL URLWithString:urlString];
+                    
+                    // Shortcut for on-demand resouces
+                    // odr://tagName/imageName
+                    if ([url.scheme isEqualToString:@"odr"] && url.pathComponents.count == 3) {
+                        __block NSBundleResourceRequest *request = [[NSBundleResourceRequest alloc] initWithTags:[NSSet setWithObject:url.pathComponents[1]]];
+                        [request beginAccessingResourcesWithCompletionHandler:^(NSError * _Nullable error) { // todo: retain request
+                            _tryUpdateMemoryCacheAndCallDelegatesWithBundledImage([UIImage imageNamed:url.pathComponents[2]], urlString, hash);
+                            request = nil; // Now that this is done, drop the request
+                        }];
+                        return;
+                    }
+                    
                     const BOOL isFileURL = url.isFileURL;
                     NSString *const path = isFileURL ? url.path : _pathForHash(hash);
                     NSURL *const fileURL = isFileURL ? url : [NSURL fileURLWithPath:path isDirectory:NO];
@@ -608,6 +620,36 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         };
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil queue:nil usingBlock:emptyCacheBlock];
         [[NSNotificationCenter defaultCenter] addObserverForName:NSExtensionHostDidEnterBackgroundNotification object:nil queue:nil usingBlock:emptyCacheBlock];
+    });
+}
+
+static void _tryUpdateMemoryCacheAndCallDelegatesWithBundledImage(UIImage *const image, NSString *const urlString, NSString *const hash)
+{
+    __block NSHashTable *delegatesForRequest = nil;
+    _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+        delegatesForRequest = [requestDelegates objectForKey:urlString];
+        [requestDelegates removeObjectForKey:urlString];
+    }, YES);
+    
+    const BOOL canProcess = ![delegatesForRequest tj_isEmpty];
+    
+    if (canProcess && image) {
+        [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
+        _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+            [mapTable setObject:image forKey:hash];
+            [mapTable setObject:image forKey:urlString];
+        }, YES);
+    }
+    // else { Skip drawing / updating cache / calling delegates since the result wouldn't be used }
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        for (id<TJImageCacheDelegate> delegate in delegatesForRequest) {
+            if (image) {
+                [delegate didGetImage:image atURL:urlString];
+            } else if ([delegate respondsToSelector:@selector(didFailToGetImageAtURL:)]) {
+                [delegate didFailToGetImageAtURL:urlString];
+            }
+        }
     });
 }
 
