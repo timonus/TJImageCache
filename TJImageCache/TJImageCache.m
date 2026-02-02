@@ -584,11 +584,10 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
-            IMAGE_CLASS *const diskImage = [IMAGE_CLASS imageWithContentsOfFile:path];
             if (backgroundDecode) {
-                image = [diskImage imageByPreparingForDisplay] ?: diskImage;
+                image = _predrawnImageFromPath(path);
             } else {
-                image = diskImage;
+                image = [IMAGE_CLASS imageWithContentsOfFile:path];
             }
             if (@available(iOS 17.0, *)) {
                 if (size > 0 && image && ![[NSProcessInfo processInfo] isLowPowerModeEnabled] && [[NSProcessInfo processInfo] thermalState] == NSProcessInfoThermalStateNominal) {
