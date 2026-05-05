@@ -584,10 +584,13 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
     IMAGE_CLASS *image = nil;
     if (canProcess) {
         if (path) {
+            __block IMAGE_CLASS *diskImage;
             if (backgroundDecode) {
                 image = _predrawnImageFromPath(path);
+                diskImage = nil;
             } else {
                 image = [IMAGE_CLASS imageWithContentsOfFile:path];
+                diskImage = image;
             }
             if (@available(iOS 17.0, *)) {
                 if (size > 0 && image && ![[NSProcessInfo processInfo] isLowPowerModeEnabled] && [[NSProcessInfo processInfo] thermalState] == NSProcessInfoThermalStateNominal) {
@@ -597,40 +600,45 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
                         reencodeQueue = dispatch_queue_create_with_target("com.tijo.TJImageCache.reencodeQueue", DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0));
                     });
                     
-                    __block IMAGE_CLASS *strongImage = image;
-                    dispatch_async(reencodeQueue, ^{
-                        NSURL *fileURL = [NSURL fileURLWithPath:path];
-                        CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
-                        
-                        if (!imageSource) {
-                            return;
-                        }
-                        
-                        const size_t count = CGImageSourceGetCount(imageSource);
-                        
-                        if (count > 1) {
+                    if (@available(iOS 17.0, *)) { // UIImageHEICRepresentation added in iOS 17
+                        __block IMAGE_CLASS *strongImage = image;
+                        dispatch_async(reencodeQueue, ^{
+                            NSURL *fileURL = [NSURL fileURLWithPath:path];
+                            CGImageSourceRef imageSource = CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, NULL);
+                            
+                            if (!imageSource) {
+                                return;
+                            }
+                            
+                            const size_t count = CGImageSourceGetCount(imageSource);
+                            
+                            if (count > 1) {
+                                CFRelease(imageSource);
+                                return; // Preserve animated images
+                            }
+                            
+                            NSString *imageType = (__bridge NSString *)CGImageSourceGetType(imageSource);
+                            UTType *utType = [UTType typeWithIdentifier:imageType];
                             CFRelease(imageSource);
-                            return; // Preserve animated images
-                        }
-                        
-                        NSString *imageType = (__bridge NSString *)CGImageSourceGetType(imageSource);
-                        UTType *utType = [UTType typeWithIdentifier:imageType];
-                        CFRelease(imageSource);
-                        
-                        if ([utType conformsToType:UTTypeWebP] ||
-                            [utType conformsToType:UTTypeHEIC] ||
-                            [utType conformsToType:UTTypeHEIF]) {
-                            // Don't attempt to re-encode already small images
-                            return;
-                        }
-                          
-                        NSData *const heicData = UIImageHEICRepresentation(diskImage);
-                        if (heicData.length < size) {
-                            [heicData writeToFile:path atomically:YES];
-                        }
-                        
-                        strongImage = nil; // Hold reference until we're done
-                    });
+                            
+                            if ([utType conformsToType:UTTypeWebP] ||
+                                [utType conformsToType:UTTypeHEIC] ||
+                                [utType conformsToType:UTTypeHEIF]) {
+                                // Don't attempt to re-encode already small images
+                                return;
+                            }
+                            
+                            if (diskImage == nil) {
+                                diskImage = [IMAGE_CLASS imageWithContentsOfFile:path];
+                            }
+                            NSData *const heicData = UIImageHEICRepresentation(diskImage);
+                            if (heicData.length < size) {
+                                [heicData writeToFile:path atomically:YES];
+                            }
+                            
+                            strongImage = nil; // Hold reference until we're done
+                        });
+                    }
                 }
             }
         }
