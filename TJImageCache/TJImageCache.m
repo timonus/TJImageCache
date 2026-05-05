@@ -554,7 +554,7 @@ static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSStrin
 }
 
 /// Keys are image URL strings
-static void _tasksForImageURLStringsWithBlock(void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
+static void _tasksForImageURLStringsWithBlock(__attribute__((noescape)) void (^block)(NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *const tasks))
 {
     static NSMutableDictionary<NSString *, NSURLSessionDownloadTask *> *tasks;
     static dispatch_once_t token;
