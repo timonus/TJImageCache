@@ -712,7 +712,7 @@ static IMAGE_CLASS *_predrawnImageFromPath(NSString *const path)
     // Create our own graphics context to draw to; `UIGraphicsGetCurrentContext`/`UIGraphicsBeginImageContextWithOptions` doesn't create a new context but returns the current one which isn't thread-safe (e.g. main thread could use it at the same time).
     // Note: It's not worth caching the bitmap context for multiple frames ("unique key" would be `width`, `height` and `hasAlpha`), it's ~50% slower. Time spent in libRIP's `CGSBlendBGRA8888toARGB8888` suddenly shoots up -- not sure why.
     
-    const CGContextRef bitmapContextRef = CGBitmapContextCreate(NULL, width, height, CHAR_BIT, bytesPerRow, colorSpaceDeviceRGBRef, kCGBitmapByteOrderDefault | alphaInfo);
+    const CGContextRef bitmapContextRef = CGBitmapContextCreate(NULL, width, height, CHAR_BIT, bytesPerRow, colorSpaceDeviceRGBRef, kCGBitmapByteOrderDefault | (CGBitmapInfo)alphaInfo);
     // Early return on failure!
     if (!bitmapContextRef) {
         NSCAssert(NO, @"Failed to `CGBitmapContextCreate` with color space %@ and parameters (width: %zu height: %zu bitsPerComponent: %zu bytesPerRow: %zu) for image %@", colorSpaceDeviceRGBRef, width, height, (size_t)CHAR_BIT, bytesPerRow, image);
