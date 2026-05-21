@@ -147,7 +147,7 @@ NSString *TJImageCacheHash(NSString *string)
     if (!inMemoryImage) {
         _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
             inMemoryImage = [mapTable objectForKey:urlString];
-        }, NO);
+        });
         if (inMemoryImage) {
             // Propagate back into our cache.
             [_cache() setObject:inMemoryImage forKey:urlString cost:inMemoryImage.size.width * inMemoryImage.size.height];
@@ -355,7 +355,7 @@ NSString *TJImageCacheHash(NSString *string)
     __block BOOL isImageInMapTable = NO;
     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
         isImageInMapTable = [mapTable objectForKey:urlString] != nil;
-    }, NO);
+    });
     
     if (isImageInMapTable) {
         return TJImageCacheDepthMemory;
@@ -438,7 +438,7 @@ NSString *TJImageCacheHash(NSString *string)
                     __block BOOL isInUse = NO;
                     _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                         isInUse = [mapTable objectForKey:file] != nil;
-                    }, NO);
+                    });
                     remove = !isInUse && !block(file, url, fileSize);
                 } else {
                     remove = YES;
@@ -504,30 +504,34 @@ static NSCache<NSString *, IMAGE_CLASS *> *_cache(void)
     return cache;
 }
 
+static dispatch_once_t _mapTableToken;
+static NSMapTable<NSString *, IMAGE_CLASS *> *_mapTable;
+static dispatch_queue_t _mapTableQueue;
+
+static void _setupMapTable(void *context) {
+    _mapTable = [NSMapTable strongToWeakObjectsMapTable];
+    _mapTableQueue = dispatch_queue_create("TJImageCache map table queue", DISPATCH_QUEUE_CONCURRENT);
+}
+
+static void _mapTableWithBlock(void (NS_NOESCAPE ^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable))
+{
+    dispatch_once_f(&_mapTableToken, nil, _setupMapTable);
+    
+    dispatch_sync(_mapTableQueue, ^{
+        block(_mapTable);
+    });
+}
+
 /// Every image maps to two keys in this map table.
 /// { image URL string -> image,
 ///   image URL string hash -> image }
 /// Both keys are used so that we can easily query for membership based on either URL (used for in-memory lookups) or hash (used for on-disk lookups)
-static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable), const BOOL blockIsWriteOnly)
+static void _mapTableWriteOnly(void (^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable))
 {
-    static NSMapTable<NSString *, IMAGE_CLASS *> *mapTable;
-    static dispatch_once_t token;
-    static dispatch_queue_t queue;
-    
-    dispatch_once(&token, ^{
-        mapTable = [NSMapTable strongToWeakObjectsMapTable];
-        queue = dispatch_queue_create("TJImageCache map table queue", DISPATCH_QUEUE_CONCURRENT);
+    dispatch_once_f(&_mapTableToken, nil, _setupMapTable);
+    dispatch_barrier_async(_mapTableQueue, ^{
+        block(_mapTable);
     });
-    
-    if (blockIsWriteOnly) {
-        dispatch_barrier_async(queue, ^{
-            block(mapTable);
-        });
-    } else {
-        dispatch_sync(queue, ^{
-            block(mapTable);
-        });
-    }
 }
 
 static dispatch_once_t _requestsToken;
@@ -578,10 +582,10 @@ static void _tasksForImageURLStringsWithBlock(__attribute__((noescape)) void (^b
 static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString *const urlString, NSString *const hash, const BOOL backgroundDecode, const long long size)
 {
     __block NSHashTable *delegatesForRequest = nil;
-    _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+    _requestDelegatesWithBlockSync(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
-    }, YES);
+    });
     
     const BOOL canProcess = ![delegatesForRequest tj_isEmpty];
     
@@ -597,10 +601,10 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
         }
         if (image) {
             [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
-            _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+            _mapTableWriteOnly(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
                 [mapTable setObject:image forKey:hash];
                 [mapTable setObject:image forKey:urlString];
-            }, YES);
+            });
         }
     }
     // else { Skip drawing / updating cache / calling delegates since the result wouldn't be used }
@@ -631,19 +635,19 @@ static void _tryUpdateMemoryCacheAndCallDelegates(NSString *const path, NSString
 static void _tryUpdateMemoryCacheAndCallDelegatesWithBundledImage(UIImage *const image, NSString *const urlString, NSString *const hash)
 {
     __block NSHashTable *delegatesForRequest = nil;
-    _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+    _requestDelegatesWithBlockSync(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         delegatesForRequest = [requestDelegates objectForKey:urlString];
         [requestDelegates removeObjectForKey:urlString];
-    }, YES);
+    });
     
     const BOOL canProcess = ![delegatesForRequest tj_isEmpty];
     
     if (canProcess && image) {
         [_cache() setObject:image forKey:urlString cost:image.size.width * image.size.height];
-        _mapTableWithBlock(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
+        _mapTableWriteOnly(^(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable) {
             [mapTable setObject:image forKey:hash];
             [mapTable setObject:image forKey:urlString];
-        }, YES);
+        });
     }
     // else { Skip drawing / updating cache / calling delegates since the result wouldn't be used }
     
