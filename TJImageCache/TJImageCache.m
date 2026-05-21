@@ -156,7 +156,7 @@ NSString *TJImageCacheHash(NSString *string)
     
     // Check if there's an existing disk/network request running for this image.
     if (!inMemoryImage && depth != TJImageCacheDepthMemory) {
-        _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+        _requestDelegatesWithBlockAsync(^(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
             BOOL loadAsynchronously = NO;
             NSHashTable *delegatesForRequest = [requestDelegates objectForKey:urlString];
             if (!delegatesForRequest) {
@@ -299,7 +299,7 @@ NSString *TJImageCacheHash(NSString *string)
                     }
                 });
             }
-        }, NO);
+        });
     }
     
     return inMemoryImage;
@@ -307,7 +307,7 @@ NSString *TJImageCacheHash(NSString *string)
 
 + (void)cancelImageLoadForURL:(NSString *const)urlString delegate:(const id<TJImageCacheDelegate>)delegate policy:(const TJImageCacheCancellationPolicy)policy
 {
-    _requestDelegatesWithBlock(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
+    _requestDelegatesWithBlockAsync(^(NSMutableDictionary<NSString *,NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates) {
         BOOL cancelTask = NO;
         NSHashTable *const delegates = [requestDelegates objectForKey:urlString];
         if (delegates) {
@@ -341,7 +341,7 @@ NSString *TJImageCacheHash(NSString *string)
                 }
             });
         }
-    }, NO);
+    });
 }
 
 #pragma mark - Cache Checking
@@ -530,27 +530,32 @@ static void _mapTableWithBlock(void (^block)(NSMapTable<NSString *, IMAGE_CLASS 
     }
 }
 
+static dispatch_once_t _requestsToken;
+static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *_requests;
+static dispatch_queue_t _requestsQueue;
+static void _setupRequestDelegates(void *context) {
+    _requests = [NSMutableDictionary new];
+    _requestsQueue = dispatch_queue_create("TJImageCache._requestDelegatesWithBlock", DISPATCH_QUEUE_SERIAL);
+}
+
 /// Keys are image URL strings
-static void _requestDelegatesWithBlock(void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates), const BOOL sync)
+static void _requestDelegatesWithBlockSync(void (NS_NOESCAPE ^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
 {
-    static NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *requests;
-    static dispatch_once_t token;
-    static dispatch_queue_t queue;
+    dispatch_once_f(&_requestsToken, nil, _setupRequestDelegates);
     
-    dispatch_once(&token, ^{
-        requests = [NSMutableDictionary new];
-        queue = dispatch_queue_create("TJImageCache._requestDelegatesWithBlock", DISPATCH_QUEUE_SERIAL);
+    dispatch_sync(_requestsQueue, ^{
+        block(_requests);
     });
+}
+
+/// Keys are image URL strings
+static void _requestDelegatesWithBlockAsync(void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
+{
+    dispatch_once_f(&_requestsToken, nil, _setupRequestDelegates);
     
-    if (sync) {
-        dispatch_sync(queue, ^{
-            block(requests);
-        });
-    } else {
-        dispatch_async(queue, ^{
-            block(requests);
-        });
-    }
+    dispatch_async(_requestsQueue, ^{
+        block(_requests);
+    });
 }
 
 /// Keys are image URL strings
