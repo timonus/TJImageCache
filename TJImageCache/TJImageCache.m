@@ -513,7 +513,7 @@ static void _setupMapTable(void *context) {
     _mapTableQueue = dispatch_queue_create("TJImageCache map table queue", DISPATCH_QUEUE_CONCURRENT);
 }
 
-static void _mapTableWithBlock(void (NS_NOESCAPE ^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable))
+static void _mapTableWithBlock(__attribute__((noescape)) void (^block)(NSMapTable<NSString *, IMAGE_CLASS *> *const mapTable))
 {
     dispatch_once_f(&_mapTableToken, nil, _setupMapTable);
     
@@ -543,7 +543,7 @@ static void _setupRequestDelegates(void *context) {
 }
 
 /// Keys are image URL strings
-static void _requestDelegatesWithBlockSync(void (NS_NOESCAPE ^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
+static void _requestDelegatesWithBlockSync(__attribute__((noescape)) void (^block)(NSMutableDictionary<NSString *, NSHashTable<id<TJImageCacheDelegate>> *> *const requestDelegates))
 {
     dispatch_once_f(&_requestsToken, nil, _setupRequestDelegates);
     
