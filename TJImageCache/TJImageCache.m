@@ -193,7 +193,7 @@ NSString *TJImageCacheHash(NSString *string)
                     // odr://tagName/imageName
                     if ([url.scheme isEqualToString:@"odr"] && url.pathComponents.count == 2) {
                         __block NSBundleResourceRequest *request = [[NSBundleResourceRequest alloc] initWithTags:[NSSet setWithObject:url.host]];
-                        [request beginAccessingResourcesWithCompletionHandler:^(NSError * _Nullable error) { // todo: retain request
+                        [request beginAccessingResourcesWithCompletionHandler:^(NSError * _Nullable error) {
                             _tryUpdateMemoryCacheAndCallDelegatesWithBundledImage([UIImage imageNamed:url.pathComponents[1]], urlString, hash);
                             request = nil; // Now that this is done, drop the request
                         }];
